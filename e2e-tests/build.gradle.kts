@@ -45,7 +45,9 @@ protobuf {
     generateProtoTasks {
         all().forEach { task ->
             task.plugins {
-                id("grpckt") { }
+                id("grpckt") {
+                    option("comments=true")
+                }
             }
             task.dependsOn(":plugin:installDist")
         }

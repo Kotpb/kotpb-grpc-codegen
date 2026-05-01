@@ -7,7 +7,7 @@ import com.squareup.kotlinpoet.TypeSpec
 
 object MethodDescriptorsGenerator {
     fun apply(builder: TypeSpec.Builder, ctx: ServiceContext) {
-        for (method in ctx.service.methodList) {
+        ctx.service.methodList.forEachIndexed { methodIndex, method ->
             val requestType = ctx.classNameOf(method.inputType)
             val responseType = ctx.classNameOf(method.outputType)
             val kind = MethodKind.of(method)
@@ -37,14 +37,12 @@ object MethodDescriptorsGenerator {
                 .add(".build()⇤\n}")
                 .build()
 
-            builder.addProperty(
-                PropertySpec.builder(
-                    ctx.getMethodPropertyName(method.name),
-                    TypeNames.MethodDescriptor.parameterizedBy(requestType, responseType),
-                )
-                    .delegate(initializer)
-                    .build()
-            )
+            val property = PropertySpec.builder(
+                ctx.getMethodPropertyName(method.name),
+                TypeNames.MethodDescriptor.parameterizedBy(requestType, responseType),
+            ).delegate(initializer)
+            ctx.methodComment(methodIndex)?.let { property.addKdoc("%L", it) }
+            builder.addProperty(property.build())
         }
     }
 }

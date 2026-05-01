@@ -36,12 +36,15 @@ The plugin executable lands at
 
 ## Plugin options
 
-Pass via protoc's `--grpc-kotlin_opt=...` flag:
+Pass via protoc's `--grpc-kotlin_opt=...` flag (comma-separated to combine):
 
 - `lite` (or `lite=true`) — emit `ProtoLiteUtils.marshaller(...)` instead of
   `ProtoUtils.marshaller(...)` for use with protobuf-javalite.
 - `java_package=<pkg>` — override the Kotlin output package (otherwise resolved
   from the file's `java_package` option, falling back to the proto package).
+- `comments` (or `comments=true`) — preserve `.proto` source comments as KDoc on
+  the generated stub class, server impl base, and per-method declarations
+  (client function, server function, and `MethodDescriptor` property).
 
 ## Generated code shape
 

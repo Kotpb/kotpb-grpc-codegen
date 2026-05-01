@@ -24,15 +24,21 @@ object ServerBaseGenerator {
                     .build()
             )
 
-        for (method in ctx.service.methodList) {
-            classBuilder.addFunction(buildOpenServerMethod(ctx, method))
+        ctx.serviceComment()?.let { classBuilder.addKdoc("%L", it) }
+
+        ctx.service.methodList.forEachIndexed { methodIndex, method ->
+            classBuilder.addFunction(buildOpenServerMethod(ctx, method, methodIndex))
         }
         classBuilder.addFunction(buildBindServiceMethod(ctx))
 
         builder.addType(classBuilder.build())
     }
 
-    private fun buildOpenServerMethod(ctx: ServiceContext, method: MethodDescriptorProto): FunSpec {
+    private fun buildOpenServerMethod(
+        ctx: ServiceContext,
+        method: MethodDescriptorProto,
+        methodIndex: Int,
+    ): FunSpec {
         val kind = MethodKind.of(method)
         val requestType = ctx.classNameOf(method.inputType)
         val responseType = ctx.classNameOf(method.outputType)
@@ -42,6 +48,8 @@ object ServerBaseGenerator {
             .addParameter(kind.requestParamName, kind.requestType(requestType))
             .returns(kind.responseType(responseType))
         if (!kind.serverStreaming) builder.addModifiers(KModifier.SUSPEND)
+
+        ctx.methodComment(methodIndex)?.let { builder.addKdoc("%L", it) }
 
         builder.addStatement(
             "throw %T(%T.UNIMPLEMENTED.withDescription(%S))",

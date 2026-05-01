@@ -35,14 +35,20 @@ object ClientStubGenerator {
                     .build()
             )
 
-        for (method in ctx.service.methodList) {
-            classBuilder.addFunction(buildClientMethod(ctx, method))
+        ctx.serviceComment()?.let { classBuilder.addKdoc("%L", it) }
+
+        ctx.service.methodList.forEachIndexed { methodIndex, method ->
+            classBuilder.addFunction(buildClientMethod(ctx, method, methodIndex))
         }
 
         builder.addType(classBuilder.build())
     }
 
-    private fun buildClientMethod(ctx: ServiceContext, method: MethodDescriptorProto): FunSpec {
+    private fun buildClientMethod(
+        ctx: ServiceContext,
+        method: MethodDescriptorProto,
+        methodIndex: Int,
+    ): FunSpec {
         val kind = MethodKind.of(method)
         val requestType = ctx.classNameOf(method.inputType)
         val responseType = ctx.classNameOf(method.outputType)
@@ -56,6 +62,8 @@ object ClientStubGenerator {
             )
             .returns(kind.responseType(responseType))
         if (!kind.serverStreaming) funBuilder.addModifiers(KModifier.SUSPEND)
+
+        ctx.methodComment(methodIndex)?.let { funBuilder.addKdoc("%L", it) }
 
         funBuilder.addStatement(
             "return %T.%N(channel, %N, %N, callOptions, headers)",

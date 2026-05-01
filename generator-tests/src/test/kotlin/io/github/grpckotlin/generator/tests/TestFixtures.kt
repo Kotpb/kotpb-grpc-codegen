@@ -6,6 +6,7 @@ import com.google.protobuf.DescriptorProtos.FileDescriptorProto
 import com.google.protobuf.DescriptorProtos.FileOptions
 import com.google.protobuf.DescriptorProtos.MethodDescriptorProto
 import com.google.protobuf.DescriptorProtos.ServiceDescriptorProto
+import com.google.protobuf.DescriptorProtos.SourceCodeInfo
 import com.google.protobuf.compiler.PluginProtos.CodeGeneratorRequest
 
 object TestFixtures {
@@ -79,6 +80,50 @@ object TestFixtures {
         return CodeGeneratorRequest.newBuilder()
             .addFileToGenerate(file.name)
             .addProtoFile(file)
+            .build()
+    }
+
+    /**
+     * Same as [simpleRequestProto3] but the file's `SourceCodeInfo` carries
+     * leading comments on the service and on each method, exactly as protoc
+     * would emit when reading a `.proto` whose source had them.
+     */
+    fun requestWithComments(): CodeGeneratorRequest {
+        val base = simpleRequestProto3()
+        val file = base.getProtoFile(0)
+
+        val sourceInfo = SourceCodeInfo.newBuilder().apply {
+            // FileDescriptorProto.service field = 6
+            addLocationBuilder().apply {
+                addPath(6); addPath(0)
+                leadingComments = " EchoService is a simple echo service.\n It echoes back what it receives.\n"
+            }
+            // service[0].method[0] (Unary) — ServiceDescriptorProto.method = 2
+            addLocationBuilder().apply {
+                addPath(6); addPath(0); addPath(2); addPath(0)
+                leadingComments = " Sends an echo request and waits for the reply.\n"
+            }
+            // service[0].method[1] (ServerStream)
+            addLocationBuilder().apply {
+                addPath(6); addPath(0); addPath(2); addPath(1)
+                leadingComments = " Streams a sequence of echo replies.\n"
+            }
+            // service[0].method[2] (ClientStream)
+            addLocationBuilder().apply {
+                addPath(6); addPath(0); addPath(2); addPath(2)
+                leadingComments = " Aggregates a stream of requests into a single reply.\n"
+            }
+            // service[0].method[3] (BidiStream)
+            addLocationBuilder().apply {
+                addPath(6); addPath(0); addPath(2); addPath(3)
+                leadingComments = " Bidirectional streaming echo.\n"
+            }
+        }
+
+        val fileWithComments = file.toBuilder().setSourceCodeInfo(sourceInfo).build()
+        return base.toBuilder()
+            .clearProtoFile()
+            .addProtoFile(fileWithComments)
             .build()
     }
 }

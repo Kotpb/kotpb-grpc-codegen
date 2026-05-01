@@ -15,9 +15,15 @@ message EchoResponse {
   int32 sequence = 2;
 }
 
+// EchoService is the canonical e2e fixture used to verify all four RPC
+// kinds round-trip correctly through our generator.
 service EchoService {
+  // Unary echo: sends one request and waits for one reply.
   rpc Unary(EchoRequest) returns (EchoResponse);
+  // Server streaming: one request, many replies.
   rpc ServerStream(EchoRequest) returns (stream EchoResponse);
+  // Client streaming: many requests, one reply.
   rpc ClientStream(stream EchoRequest) returns (EchoResponse);
+  // Bidirectional streaming: many requests, many replies.
   rpc BidiStream(stream EchoRequest) returns (stream EchoResponse);
 }

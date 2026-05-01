@@ -22,9 +22,12 @@ object ProtoFileCodeGenerator {
                     "source: ${fileProto.name}\n"
             )
 
-        for (service in fileProto.serviceList) {
-            val ctx = ServiceContext(fileProto, service, config, typeIndex)
+        val comments = ProtoComments.of(fileProto)
+
+        fileProto.serviceList.forEachIndexed { serviceIndex, service ->
+            val ctx = ServiceContext(fileProto, service, serviceIndex, config, typeIndex, comments)
             val outerObject = TypeSpec.objectBuilder(ctx.outerObjectName)
+            ctx.serviceComment()?.let { outerObject.addKdoc("%L", it) }
             ServiceNameGenerator.apply(outerObject, ctx)
             DescriptorSuppliersGenerator.apply(outerObject, ctx)
             MethodDescriptorsGenerator.apply(outerObject, ctx)
