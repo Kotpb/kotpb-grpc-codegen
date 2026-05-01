@@ -1,0 +1,23 @@
+syntax = "proto2";
+
+package test.greet;
+
+option java_package = "com.example.greet";
+option java_outer_classname = "GreetProto";
+option java_multiple_files = true;
+
+message GreetRequest {
+  required string name = 1;
+  optional string title = 2;
+}
+
+message GreetResponse {
+  required string greeting = 1;
+}
+
+service GreetService {
+  rpc Greet(GreetRequest) returns (GreetResponse);
+  rpc GreetMany(GreetRequest) returns (stream GreetResponse);
+  rpc Aggregate(stream GreetRequest) returns (GreetResponse);
+  rpc Chat(stream GreetRequest) returns (stream GreetResponse);
+}

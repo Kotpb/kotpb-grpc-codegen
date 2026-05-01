@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package test.echo;
+
+option java_package = "com.example.echo";
+option java_outer_classname = "EchoProto";
+option java_multiple_files = true;
+
+message EchoRequest {
+  string message = 1;
+}
+
+message EchoResponse {
+  string message = 1;
+  int32 sequence = 2;
+}
+
+service EchoService {
+  rpc Unary(EchoRequest) returns (EchoResponse);
+  rpc ServerStream(EchoRequest) returns (stream EchoResponse);
+  rpc ClientStream(stream EchoRequest) returns (EchoResponse);
+  rpc BidiStream(stream EchoRequest) returns (stream EchoResponse);
+}

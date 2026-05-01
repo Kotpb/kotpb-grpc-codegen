@@ -1,0 +1,23 @@
+edition = "2023";
+
+package test.calc;
+
+option java_package = "com.example.calc";
+option java_outer_classname = "CalcProto";
+option java_multiple_files = true;
+
+message CalcRequest {
+  int64 a = 1;
+  int64 b = 2;
+}
+
+message CalcResponse {
+  int64 result = 1;
+}
+
+service CalcService {
+  rpc Add(CalcRequest) returns (CalcResponse);
+  rpc AddMany(CalcRequest) returns (stream CalcResponse);
+  rpc Sum(stream CalcRequest) returns (CalcResponse);
+  rpc Stream(stream CalcRequest) returns (stream CalcResponse);
+}
