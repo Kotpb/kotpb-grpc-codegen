@@ -1,12 +1,8 @@
 import com.google.protobuf.gradle.id
 
 plugins {
-    alias(libs.plugins.kotlin.jvm)
+    id("grpckotlin.kotlin-conventions")
     alias(libs.plugins.protobuf)
-}
-
-kotlin {
-    jvmToolchain(17)
 }
 
 dependencies {
@@ -33,11 +29,13 @@ val grpcKotlinPluginPath: String =
         .asFile
         .absolutePath
 
-val protobufArtifactVersion: String = "4.35.0-RC1"
-
+// Resolve the protoc artifact coordinates from the version catalog. We use the
+// library accessor (libs.protobuf.protoc) rather than libs.versions.protobuf,
+// because the type-safe accessor for a [versions] entry doesn't surface .get()
+// inside the protobuf-gradle-plugin's configuration block on this Gradle version.
 protobuf {
     protoc {
-        artifact = "com.google.protobuf:protoc:$protobufArtifactVersion"
+        artifact = libs.protobuf.protoc.get().toString()
     }
     plugins {
         id("grpckt") {
@@ -52,8 +50,4 @@ protobuf {
             task.dependsOn(":plugin:installDist")
         }
     }
-}
-
-tasks.test {
-    useJUnitPlatform()
 }

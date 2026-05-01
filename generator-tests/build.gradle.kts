@@ -1,20 +1,12 @@
 plugins {
-    alias(libs.plugins.kotlin.jvm)
-}
-
-kotlin {
-    jvmToolchain(17)
+    id("grpckotlin.kotlin-conventions")
 }
 
 dependencies {
-    testImplementation(project(":generator"))
+    testImplementation(projects.generator)
     testImplementation(libs.kotlinpoet)
     testImplementation(libs.protobuf.kotlin)
     testImplementation(libs.junit.jupiter)
     testRuntimeOnly(libs.junit.platform.launcher)
     testImplementation(libs.assertj)
-}
-
-tasks.test {
-    useJUnitPlatform()
 }

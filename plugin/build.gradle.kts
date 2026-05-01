@@ -1,10 +1,6 @@
 plugins {
-    alias(libs.plugins.kotlin.jvm)
+    id("grpckotlin.kotlin-conventions")
     application
-}
-
-kotlin {
-    jvmToolchain(17)
 }
 
 application {
@@ -13,5 +9,5 @@ application {
 }
 
 dependencies {
-    implementation(project(":generator"))
+    implementation(projects.generator)
 }
