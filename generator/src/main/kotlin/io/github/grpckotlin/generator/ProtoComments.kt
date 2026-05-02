@@ -1,29 +1,25 @@
 package io.github.grpckotlin.generator
 
 import com.google.protobuf.DescriptorProtos.FileDescriptorProto
+import com.google.protobuf.DescriptorProtos.FileDescriptorProto.SERVICE_FIELD_NUMBER
+import com.google.protobuf.DescriptorProtos.ServiceDescriptorProto.METHOD_FIELD_NUMBER
 
 /**
  * Lookup of `leading_comments` from a file's `SourceCodeInfo`, keyed by the
  * descriptor `path` that protoc encodes for each element.
  *
- * Field numbers come from `descriptor.proto`:
- * - FileDescriptorProto.service       = 6
- * - ServiceDescriptorProto.method     = 2
- *
- * So `[6, i]` is the i-th service in the file, and `[6, i, 2, j]` is the j-th
- * method of that service.
+ * `[FileDescriptorProto.service, i]` is the i-th service in the file, and
+ * `[FileDescriptorProto.service, i, ServiceDescriptorProto.method, j]` is
+ * the j-th method of that service.
  */
 class ProtoComments private constructor(private val byPath: Map<List<Int>, String>) {
     fun forService(serviceIndex: Int): String? =
-        byPath[listOf(SERVICE_FIELD, serviceIndex)]
+        byPath[listOf(SERVICE_FIELD_NUMBER, serviceIndex)]
 
     fun forMethod(serviceIndex: Int, methodIndex: Int): String? =
-        byPath[listOf(SERVICE_FIELD, serviceIndex, METHOD_FIELD, methodIndex)]
+        byPath[listOf(SERVICE_FIELD_NUMBER, serviceIndex, METHOD_FIELD_NUMBER, methodIndex)]
 
     companion object {
-        private const val SERVICE_FIELD = 6
-        private const val METHOD_FIELD = 2
-
         val EMPTY = ProtoComments(emptyMap())
 
         fun of(file: FileDescriptorProto): ProtoComments {
