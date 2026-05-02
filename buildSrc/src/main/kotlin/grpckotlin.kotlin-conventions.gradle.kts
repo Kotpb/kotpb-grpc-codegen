@@ -5,16 +5,17 @@ plugins {
 }
 
 kotlin {
-    jvmToolchain(11)
+    jvmToolchain(17)
     compilerOptions {
-        jvmTarget.set(JvmTarget.JVM_11)
-        // Treat warnings consistently across modules.
+        // JUnit 6 raised its baseline to Java 17, so the test deps demand 17
+        // even though the generator + plugin would otherwise be happy on 11.
+        jvmTarget.set(JvmTarget.JVM_17)
         allWarningsAsErrors.set(false)
     }
 }
 
 tasks.withType<JavaCompile>().configureEach {
-    options.release.set(11)
+    options.release.set(17)
 }
 
 tasks.withType<Test>().configureEach {
