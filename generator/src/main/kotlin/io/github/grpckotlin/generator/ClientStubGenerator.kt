@@ -5,6 +5,7 @@ import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.KModifier
 import com.squareup.kotlinpoet.ParameterSpec
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
+import com.squareup.kotlinpoet.PropertySpec
 import com.squareup.kotlinpoet.TypeSpec
 
 object ClientStubGenerator {
@@ -40,12 +41,33 @@ object ClientStubGenerator {
             classBuilder.addAnnotation(Annotations.deprecated(Annotations.DEPRECATED_SERVICE_MESSAGE))
         }
 
+        classBuilder.addType(serviceDescriptorCompanion(ctx))
+
         ctx.service.methodList.forEachIndexed { methodIndex, method ->
             classBuilder.addFunction(buildClientMethod(ctx, method, methodIndex))
         }
 
         builder.addType(classBuilder.build())
     }
+
+    /**
+     * Companion object exposing `serviceDescriptor` from the stub class itself,
+     * so callers with only the stub type (or a Java caller via @JvmStatic) can
+     * read service options without referencing the outer GrpcKt object.
+     */
+    private fun serviceDescriptorCompanion(ctx: ServiceContext): TypeSpec =
+        TypeSpec.companionObjectBuilder()
+            .addProperty(
+                PropertySpec.builder("serviceDescriptor", TypeNames.ServiceDescriptor)
+                    .addAnnotation(JvmStatic::class)
+                    .getter(
+                        FunSpec.getterBuilder()
+                            .addStatement("return %T.serviceDescriptor", ctx.outerObjectClassName)
+                            .build()
+                    )
+                    .build()
+            )
+            .build()
 
     private fun buildClientMethod(
         ctx: ServiceContext,

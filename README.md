@@ -46,6 +46,19 @@ Pass via protoc's `--grpc-kotlin_opt=...` flag (comma-separated to combine):
   the generated stub class, server impl base, and per-method declarations
   (client function, server function, and `MethodDescriptor` property).
 
+## Service descriptor accessors
+
+The `ServiceDescriptor` is exposed in three places, all referring to the same
+singleton instance:
+
+- `<package>.<Service>GrpcKt.serviceDescriptor` — top-level on the outer object.
+- `<Service>CoroutineStub.serviceDescriptor` — `@JvmStatic` companion accessor,
+  reachable via the stub class alone (handy when reading service options
+  reflectively from code that already imports the stub type).
+- `<Service>CoroutineImplBase.serviceDescriptor` — same accessor on the impl
+  base, plus `bindService()` already wires the descriptor into the
+  `ServerServiceDefinition` it returns.
+
 ## Deprecation handling
 
 `option deprecated = true` on a service or RPC produces matching `@Deprecated`

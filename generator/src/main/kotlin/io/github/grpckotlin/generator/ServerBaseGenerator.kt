@@ -5,6 +5,7 @@ import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.KModifier
 import com.squareup.kotlinpoet.ParameterSpec
+import com.squareup.kotlinpoet.PropertySpec
 import com.squareup.kotlinpoet.TypeSpec
 
 object ServerBaseGenerator {
@@ -29,6 +30,8 @@ object ServerBaseGenerator {
             classBuilder.addAnnotation(Annotations.deprecated(Annotations.DEPRECATED_SERVICE_MESSAGE))
         }
 
+        classBuilder.addType(serviceDescriptorCompanion(ctx))
+
         ctx.service.methodList.forEachIndexed { methodIndex, method ->
             classBuilder.addFunction(buildOpenServerMethod(ctx, method, methodIndex))
         }
@@ -36,6 +39,20 @@ object ServerBaseGenerator {
 
         builder.addType(classBuilder.build())
     }
+
+    private fun serviceDescriptorCompanion(ctx: ServiceContext): TypeSpec =
+        TypeSpec.companionObjectBuilder()
+            .addProperty(
+                PropertySpec.builder("serviceDescriptor", TypeNames.ServiceDescriptor)
+                    .addAnnotation(JvmStatic::class)
+                    .getter(
+                        FunSpec.getterBuilder()
+                            .addStatement("return %T.serviceDescriptor", ctx.outerObjectClassName)
+                            .build()
+                    )
+                    .build()
+            )
+            .build()
 
     private fun buildOpenServerMethod(
         ctx: ServiceContext,

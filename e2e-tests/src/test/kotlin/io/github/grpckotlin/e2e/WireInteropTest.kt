@@ -109,6 +109,18 @@ class WireInteropTest {
         assertThat(descriptor.methods.map { it.bareMethodName })
             .containsExactlyInAnyOrder("Unary", "ServerStream", "ClientStream", "BidiStream")
     }
+
+    @Test
+    fun `stub companion exposes the same serviceDescriptor as the outer GrpcKt`() {
+        assertThat(EchoServiceGrpcKt.EchoServiceCoroutineStub.serviceDescriptor)
+            .isSameAs(EchoServiceGrpcKt.serviceDescriptor)
+    }
+
+    @Test
+    fun `impl-base companion exposes the same serviceDescriptor as the outer GrpcKt`() {
+        assertThat(EchoServiceGrpcKt.EchoServiceCoroutineImplBase.serviceDescriptor)
+            .isSameAs(EchoServiceGrpcKt.serviceDescriptor)
+    }
 }
 
 private class InteropEchoServer : EchoServiceGrpcKt.EchoServiceCoroutineImplBase() {

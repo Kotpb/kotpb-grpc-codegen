@@ -21,6 +21,7 @@ class ServiceContext(
         DescriptorUtil.resolveJavaOuterClassName(file),
     )
     val outerObjectName: String = "${service.name}GrpcKt"
+    val outerObjectClassName: ClassName = ClassName(kotlinPackage, outerObjectName)
 
     val baseDescriptorSupplierClassName: ClassName =
         ClassName(kotlinPackage, outerObjectName, "${service.name}BaseDescriptorSupplier")
