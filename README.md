@@ -64,8 +64,15 @@ What a consumer project compiling and running the generated Kotlin code needs.
 
 ### JVM
 
-**Java 8 or later.** Every runtime library our generated code links against
-ships Java 8 bytecode (class-file major version 52):
+The generated source contains no JVM-level construct that demands a
+specific bytecode floor — no method handles, records, sealed-permits,
+`invokedynamic`-only features, etc. So **the codegen itself imposes no
+JVM minimum.**
+
+The practical floor comes from the libraries the consumer pulls in.
+At the versions we test against, every dep ships Java 8 bytecode
+(class-file major version 52), so the resulting effective floor is
+**Java 8**:
 
 | Artifact | Class major | Source of pin |
 |---|---|---|
@@ -74,36 +81,16 @@ ships Java 8 bytecode (class-file major version 52):
 | `com.google.protobuf:protobuf-java:4.34.1` | 52 (Java 8) | Manifest: `Require-Capability: osgi.ee … 1.8` |
 | `org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.10.2` | 52 (Java 8) | local jar inspection — `cafe babe 0000 0034` |
 
-`io.grpc:grpc-bom:1.81.0` declares no consumer Java-version constraint of its
-own — it's a pure `<dependencyManagement>` BOM. The Java floor comes entirely
-from the per-artifact bytecode level.
-
-The consumer's `jvmTarget` for *compiling* the generated Kotlin source is
-their own choice; we don't constrain it.
+The consumer's `jvmTarget` for *compiling* the generated Kotlin source
+is their own choice; we don't constrain it.
 
 ### Kotlin
 
-The generator emits only Kotlin 1.0–1.1 language features (`suspend`,
+The generator emits code compatible with Kotlin 1.0–1.1 language features (`suspend`,
 `companion object`, `@JvmStatic`, `by lazy`, default-value parameters,
-top-level `object`, single-interface class delegation) plus
-`kotlinx.coroutines.flow.Flow`. So the **language-level floor from the
-generated code is Kotlin 1.3** (when `Flow` was introduced).
-
-In practice the consumer's effective Kotlin floor is set by the *library
-versions* they choose, not by our generator:
-
-| Library version on classpath | Effective Kotlin floor |
-|---|---|
-| `kotlinx-coroutines-core 1.10.2` (what we test against) | ~2.0 — its Gradle module declares `kotlin-stdlib { requires 2.1.0 }` and its bytecode is compiled by Kotlin 2.1 |
-| `kotlinx-coroutines-core 1.7.x` | 1.8 |
-| `kotlinx-coroutines-core 1.5.x` | 1.6 |
-| `kotlinx-coroutines-core 1.3.0` (the absolute minimum for `Flow`) | 1.3 |
-
-`grpc-kotlin-stub:1.4.3` declares `kotlin-stdlib:1.8.0` runtime in its POM,
-so it is not the binding constraint at our test versions; the coroutines
-library is. A consumer that wants a Kotlin 1.x compiler can use older
-coroutines (and older grpc-kotlin-stub) and the generated code will still
-compile — nothing the generator emits requires more.
+top-level `object`, single-interface class delegation). 
+Except for streaming services that require `kotlinx.coroutines.flow.Flow` in that case 
+**language-level floor from the generated code is Kotlin 1.3** (when `Flow` was introduced).
 
 ### Library versions
 
@@ -118,11 +105,6 @@ that should still resolve every symbol the generated code imports.
 | `io.grpc:grpc-kotlin-stub` | 1.4.3 | 1.0.0 (2020) | `AbstractCoroutineStub`, `AbstractCoroutineServerImpl`, `ClientCalls`, `ServerCalls` |
 | `com.google.protobuf:protobuf-java` | 4.34.1 | 3.x | `Descriptors.FileDescriptor`, `<Message>.getDefaultInstance()` |
 | `org.jetbrains.kotlinx:kotlinx-coroutines-core` | 1.10.2 | 1.3.0 | `kotlinx.coroutines.flow.Flow` |
-
-We don't attempt to support pre-1.3 coroutines (there's no `Flow`) or pre-1.0
-grpc-kotlin-stub (the runtime classes hadn't been published yet). Within the
-ranges above, no symbol our generator emits requires a more recent library —
-the runtime is conservative on purpose.
 
 ## Modules
 
