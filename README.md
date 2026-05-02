@@ -25,14 +25,48 @@ Supports proto2, proto3, edition 2023, and edition 2024.
 ## Build & test
 
 ```powershell
-./gradlew build                       # compile everything
-./gradlew :generator-tests:test       # generator unit tests
-./gradlew :e2e-tests:test             # full e2e + wire interop
-./gradlew :plugin:installDist         # produce the protoc-gen-grpc-kotlin executable
+./gradlew build                  # compile everything + run tests
+./gradlew :generator:test        # generator unit tests only
+./gradlew :e2e-tests:test        # protoc + RPC tests only
+./gradlew :plugin:installDist    # produce the JVM protoc-gen-grpc-kotlin
 ```
 
-The plugin executable lands at
+The JVM executable lands at
 `plugin/build/install/protoc-gen-grpc-kotlin/bin/protoc-gen-grpc-kotlin[.bat]`.
+
+## JVM-less native binary (GraalVM)
+
+The plugin can be compiled to a self-contained native binary that runs
+without a JVM installed. Useful for distributing as a single executable
+or for protoc invocations on machines that don't have Java set up.
+
+### Locally
+
+```powershell
+./gradlew :plugin:nativeCompile
+```
+
+The binary lands at
+`plugin/build/native/nativeCompile/protoc-gen-grpc-kotlin[.exe]`.
+
+Local prerequisites:
+
+| Platform | Needs |
+|---|---|
+| Linux   | `gcc`, `glibc` headers (preinstalled on most distros) |
+| macOS   | Xcode command-line tools (`xcode-select --install`) |
+| Windows | Visual Studio 2022 with the C++ build tools, or run the build inside the *x64 Native Tools Command Prompt* |
+
+GraalVM JDK 21 itself is downloaded automatically by Gradle's foojay
+toolchain resolver — no separate install required.
+
+### Cross-platform binaries via CI
+
+`.github/workflows/native-binaries.yml` runs on every push of a `v*` tag
+and builds binaries for **Linux x86_64**, **macOS x86_64**, **macOS
+aarch64**, and **Windows x86_64**, attaching them to the corresponding
+GitHub Release. The same workflow can be triggered manually from the
+Actions tab to produce build artifacts without cutting a release.
 
 ## Plugin options
 
