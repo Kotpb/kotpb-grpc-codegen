@@ -1,0 +1,33 @@
+// Matrix cell: derived outer class name collides with a top-level type.
+//
+// The filename `outer_class_collision.proto` CamelCases to
+// `OuterClassCollision`. A top-level message of the same name forces
+// protoc-gen-java to append "OuterClass" to the derived outer class --
+// the actual generated outer class becomes `OuterClassCollisionOuterClass`.
+//
+// Our generator must apply the exact same rule. If it diverges, every
+// generated supplier would call `OuterClassCollision.getDescriptor()`,
+// referring to the message class instead of the (non-existent) outer
+// class -- and the test would fail to even compile.
+//
+// Bundled mode (no java_multiple_files) is essential here: that's what
+// puts the message classes inside the outer class on the Java side, and
+// it's what makes our generator emit `<OuterClass>.<MessageType>`
+// qualifiers we want to verify.
+
+syntax = "proto3";
+
+package outer_class_collision;
+
+option java_package = "com.example.outer_class_collision";
+// java_outer_classname deliberately omitted -- we want the derivation logic.
+// java_multiple_files deliberately omitted -- bundled mode (default false).
+
+// Top-level message whose name collides with the derived outer class name.
+message OuterClassCollision {
+  string note = 1;
+}
+
+service NoteService {
+  rpc Take(OuterClassCollision) returns (OuterClassCollision);
+}
