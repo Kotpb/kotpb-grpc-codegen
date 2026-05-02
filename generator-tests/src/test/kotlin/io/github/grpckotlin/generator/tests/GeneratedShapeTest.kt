@@ -77,7 +77,9 @@ class GeneratedShapeTest {
     @Test
     fun `ServiceDescriptor is built from our own suppliers and addMethod calls`() {
         assertThat(content).contains("ServiceDescriptor.newBuilder(SERVICE_NAME)")
-        assertThat(content).contains("setSchemaDescriptor(EchoServiceFileDescriptorSupplier())")
+        // EchoServiceFileDescriptorSupplier is now an `object`, so the schema
+        // descriptor reference is the singleton itself -- no parens, no allocation.
+        assertThat(content).contains("setSchemaDescriptor(EchoServiceFileDescriptorSupplier)")
         assertThat(content).contains("addMethod(getUnaryMethod)")
         assertThat(content).contains("addMethod(getServerStreamMethod)")
         assertThat(content).contains("addMethod(getClientStreamMethod)")

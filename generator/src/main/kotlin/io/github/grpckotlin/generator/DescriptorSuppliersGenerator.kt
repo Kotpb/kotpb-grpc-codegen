@@ -1,23 +1,25 @@
 package io.github.grpckotlin.generator
 
+import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.KModifier
-import com.squareup.kotlinpoet.ParameterSpec
 import com.squareup.kotlinpoet.PropertySpec
 import com.squareup.kotlinpoet.TypeSpec
 
 object DescriptorSuppliersGenerator {
     fun apply(builder: TypeSpec.Builder, ctx: ServiceContext) {
-        builder.addType(buildBaseSupplier(ctx))
         builder.addType(buildFileSupplier(ctx))
         builder.addType(buildMethodSupplier(ctx))
     }
 
-    private fun buildBaseSupplier(ctx: ServiceContext): TypeSpec {
-        val name = ctx.baseDescriptorSupplierClassName.simpleName
-        return TypeSpec.classBuilder(name)
-            .addModifiers(KModifier.PRIVATE, KModifier.ABSTRACT)
-            .addSuperinterface(TypeNames.ProtoFileDescriptorSupplier)
+    /**
+     * The file/service supplier is stateless, so it's emitted as an `object`
+     * (singleton): zero allocations per service descriptor and one fewer
+     * declaration than the upstream three-class pattern.
+     */
+    private fun buildFileSupplier(ctx: ServiceContext): TypeSpec =
+        TypeSpec.objectBuilder(ctx.fileDescriptorSupplierClassName.simpleName)
+            .addModifiers(KModifier.PRIVATE)
             .addSuperinterface(TypeNames.ProtoServiceDescriptorSupplier)
             .addFunction(
                 FunSpec.builder("getFileDescriptor")
@@ -34,25 +36,25 @@ object DescriptorSuppliersGenerator {
                     .build()
             )
             .build()
-    }
 
-    private fun buildFileSupplier(ctx: ServiceContext): TypeSpec {
-        val name = ctx.fileDescriptorSupplierClassName.simpleName
-        return TypeSpec.classBuilder(name)
+    /**
+     * The per-method supplier holds the method name as state, so it stays a
+     * class. It implements `ProtoMethodDescriptorSupplier` directly and
+     * delegates `ProtoServiceDescriptorSupplier` (which transitively covers
+     * `ProtoFileDescriptorSupplier`) to the singleton above — no inheritance,
+     * no duplication.
+     */
+    private fun buildMethodSupplier(ctx: ServiceContext): TypeSpec =
+        TypeSpec.classBuilder(ctx.methodDescriptorSupplierClassName.simpleName)
             .addModifiers(KModifier.PRIVATE)
-            .superclass(ctx.baseDescriptorSupplierClassName)
-            .build()
-    }
-
-    private fun buildMethodSupplier(ctx: ServiceContext): TypeSpec {
-        val name = ctx.methodDescriptorSupplierClassName.simpleName
-        return TypeSpec.classBuilder(name)
-            .addModifiers(KModifier.PRIVATE)
-            .superclass(ctx.baseDescriptorSupplierClassName)
             .addSuperinterface(TypeNames.ProtoMethodDescriptorSupplier)
+            .addSuperinterface(
+                TypeNames.ProtoServiceDescriptorSupplier,
+                CodeBlock.of("%T", ctx.fileDescriptorSupplierClassName),
+            )
             .primaryConstructor(
                 FunSpec.constructorBuilder()
-                    .addParameter(ParameterSpec.builder("methodName", String::class).build())
+                    .addParameter("methodName", String::class)
                     .build()
             )
             .addProperty(
@@ -69,5 +71,4 @@ object DescriptorSuppliersGenerator {
                     .build()
             )
             .build()
-    }
 }

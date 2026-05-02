@@ -9,7 +9,7 @@ object ServiceDescriptorGenerator {
         val initializer = CodeBlock.builder()
             .add("lazy {⇥\n")
             .add("%T.newBuilder(SERVICE_NAME)\n", TypeNames.ServiceDescriptor)
-            .add(".setSchemaDescriptor(%T())\n", ctx.fileDescriptorSupplierClassName)
+            .add(".setSchemaDescriptor(%T)\n", ctx.fileDescriptorSupplierClassName)
         for (method in ctx.service.methodList) {
             initializer.add(".addMethod(%N)\n", ctx.getMethodPropertyName(method.name))
         }
