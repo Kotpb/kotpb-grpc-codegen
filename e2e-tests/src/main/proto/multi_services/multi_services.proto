@@ -1,0 +1,29 @@
+// Matrix cell: multiple services declared in a single .proto file.
+//
+// Both services share the package and the outer Java class. With
+// java_multiple_files = true our ProtoFileCodeGenerator emits one .kt per
+// service: PingServiceGrpcKt.kt + PongServiceGrpcKt.kt.
+
+syntax = "proto3";
+
+package multi_services;
+
+option java_package = "com.example.multi_services";
+option java_outer_classname = "MultiServicesProto";
+option java_multiple_files = true;
+
+message Ping {
+  string from = 1;
+}
+
+message Pong {
+  string from = 1;
+}
+
+service PingService {
+  rpc Send(Ping) returns (Pong);
+}
+
+service PongService {
+  rpc Send(Pong) returns (Ping);
+}

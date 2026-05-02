@@ -1,8 +1,8 @@
 package io.github.grpckotlin.e2e
 
-import com.example.echo.EchoRequest
-import com.example.echo.EchoResponse
-import com.example.echo.EchoServiceGrpcKt
+import com.example.proto3_multifiles.EchoRequest
+import com.example.proto3_multifiles.EchoResponse
+import com.example.proto3_multifiles.EchoServiceGrpcKt
 import io.grpc.MethodDescriptor
 import io.grpc.ServerServiceDefinition
 import io.grpc.inprocess.InProcessChannelBuilder
@@ -12,7 +12,6 @@ import io.grpc.protobuf.ProtoUtils
 import kotlinx.coroutines.test.runTest
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import kotlin.coroutines.EmptyCoroutineContext
 
@@ -29,6 +28,9 @@ class WireInteropTest {
     private lateinit var server: io.grpc.Server
     private lateinit var channel: io.grpc.ManagedChannel
 
+    private val canonicalServiceName = "proto3_multifiles.EchoService"
+    private val canonicalUnaryFullMethodName = "$canonicalServiceName/Unary"
+
     @AfterEach
     fun tearDown() {
         if (::channel.isInitialized) channel.shutdownNow()
@@ -39,12 +41,12 @@ class WireInteropTest {
     fun `our generated client can call a hand-built grpc-java-shape server`() = runTest {
         val handBuiltMethod = MethodDescriptor.newBuilder<EchoRequest, EchoResponse>()
             .setType(MethodDescriptor.MethodType.UNARY)
-            .setFullMethodName("test.echo.EchoService/Unary")
+            .setFullMethodName(canonicalUnaryFullMethodName)
             .setRequestMarshaller(ProtoUtils.marshaller(EchoRequest.getDefaultInstance()))
             .setResponseMarshaller(ProtoUtils.marshaller(EchoResponse.getDefaultInstance()))
             .build()
 
-        val handBuiltService = ServerServiceDefinition.builder("test.echo.EchoService")
+        val handBuiltService = ServerServiceDefinition.builder(canonicalServiceName)
             .addMethod(
                 ServerCalls.unaryServerMethodDefinition(
                     context = EmptyCoroutineContext,
@@ -73,7 +75,7 @@ class WireInteropTest {
     fun `a hand-built client using the canonical fullMethodName can call our generated server`() = runTest {
         val handBuiltMethod = MethodDescriptor.newBuilder<EchoRequest, EchoResponse>()
             .setType(MethodDescriptor.MethodType.UNARY)
-            .setFullMethodName("test.echo.EchoService/Unary")
+            .setFullMethodName(canonicalUnaryFullMethodName)
             .setRequestMarshaller(ProtoUtils.marshaller(EchoRequest.getDefaultInstance()))
             .setResponseMarshaller(ProtoUtils.marshaller(EchoResponse.getDefaultInstance()))
             .build()
@@ -96,16 +98,16 @@ class WireInteropTest {
     @Test
     fun `our generated MethodDescriptor uses the canonical fullMethodName format`() {
         val descriptor = EchoServiceGrpcKt.getUnaryMethod
-        assertThat(descriptor.fullMethodName).isEqualTo("test.echo.EchoService/Unary")
+        assertThat(descriptor.fullMethodName).isEqualTo(canonicalUnaryFullMethodName)
         assertThat(descriptor.type).isEqualTo(MethodDescriptor.MethodType.UNARY)
-        assertThat(descriptor.serviceName).isEqualTo("test.echo.EchoService")
+        assertThat(descriptor.serviceName).isEqualTo(canonicalServiceName)
         assertThat(descriptor.bareMethodName).isEqualTo("Unary")
     }
 
     @Test
     fun `our generated ServiceDescriptor exposes the right service name and method count`() {
         val descriptor = EchoServiceGrpcKt.serviceDescriptor
-        assertThat(descriptor.name).isEqualTo("test.echo.EchoService")
+        assertThat(descriptor.name).isEqualTo(canonicalServiceName)
         assertThat(descriptor.methods.map { it.bareMethodName })
             .containsExactlyInAnyOrder("Unary", "ServerStream", "ClientStream", "BidiStream")
     }

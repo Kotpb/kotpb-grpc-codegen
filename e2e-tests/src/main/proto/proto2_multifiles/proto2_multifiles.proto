@@ -1,9 +1,11 @@
+// Matrix cell: proto2 with `java_multiple_files = true`.
+
 syntax = "proto2";
 
-package test.greet;
+package proto2_multifiles;
 
-option java_package = "com.example.greet";
-option java_outer_classname = "GreetProto";
+option java_package = "com.example.proto2_multifiles";
+option java_outer_classname = "Proto2MultifilesProto";
 option java_multiple_files = true;
 
 message GreetRequest {

@@ -1,0 +1,25 @@
+// Matrix cell: proto2 with `java_multiple_files = false` (default).
+//
+// proto2 still carries required/optional field semantics; verify they
+// round-trip when messages live nested inside the outer class.
+
+syntax = "proto2";
+
+package proto2_bundled;
+
+option java_package = "com.example.proto2_bundled";
+option java_outer_classname = "Proto2BundledProto";
+// java_multiple_files deliberately omitted.
+
+message RegisterRequest {
+  required string username = 1;
+  optional string display_name = 2;
+}
+
+message RegisterResponse {
+  required string user_id = 1;
+}
+
+service RegisterService {
+  rpc Register(RegisterRequest) returns (RegisterResponse);
+}

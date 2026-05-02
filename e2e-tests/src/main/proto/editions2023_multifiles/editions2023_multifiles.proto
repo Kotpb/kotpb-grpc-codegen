@@ -1,9 +1,11 @@
+// Matrix cell: edition 2023 with `java_multiple_files = true`.
+
 edition = "2023";
 
-package test.calc;
+package editions2023_multifiles;
 
-option java_package = "com.example.calc";
-option java_outer_classname = "CalcProto";
+option java_package = "com.example.editions2023_multifiles";
+option java_outer_classname = "Editions2023MultifilesProto";
 option java_multiple_files = true;
 
 message CalcRequest {

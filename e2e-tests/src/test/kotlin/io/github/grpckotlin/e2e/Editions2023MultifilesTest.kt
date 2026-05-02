@@ -1,8 +1,8 @@
 package io.github.grpckotlin.e2e
 
-import com.example.calc.CalcRequest
-import com.example.calc.CalcResponse
-import com.example.calc.CalcServiceGrpcKt
+import com.example.editions2023_multifiles.CalcRequest
+import com.example.editions2023_multifiles.CalcResponse
+import com.example.editions2023_multifiles.CalcServiceGrpcKt
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.toList
@@ -11,7 +11,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.RegisterExtension
 
-class Editions2023CalcTest {
+class Editions2023MultifilesTest {
     @JvmField
     @RegisterExtension
     val grpc = InProcessGrpcExtension(

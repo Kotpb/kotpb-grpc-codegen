@@ -14,7 +14,7 @@ import org.junit.jupiter.api.extension.RegisterExtension
  * file lacked a proper qualifier, this test would either fail to compile
  * or the RPC would be wired to the wrong descriptor at runtime.
  */
-class CollisionTest {
+class NameCollisionsTest {
     @JvmField
     @RegisterExtension
     val grpc = InProcessGrpcExtension(

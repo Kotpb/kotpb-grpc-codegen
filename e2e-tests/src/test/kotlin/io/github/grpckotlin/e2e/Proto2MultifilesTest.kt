@@ -1,8 +1,8 @@
 package io.github.grpckotlin.e2e
 
-import com.example.greet.GreetRequest
-import com.example.greet.GreetResponse
-import com.example.greet.GreetServiceGrpcKt
+import com.example.proto2_multifiles.GreetRequest
+import com.example.proto2_multifiles.GreetResponse
+import com.example.proto2_multifiles.GreetServiceGrpcKt
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.toList
@@ -11,7 +11,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.RegisterExtension
 
-class Proto2GreetTest {
+class Proto2MultifilesTest {
     @JvmField
     @RegisterExtension
     val grpc = InProcessGrpcExtension(

@@ -1,0 +1,27 @@
+// Matrix cell: proto3 with `java_multiple_files` unset (default = false).
+//
+// Without that option, protoc-gen-java emits messages nested inside the
+// outer file class (Proto3BundledProto.InvoiceRequest, ...). Our generator
+// emits a single bundled <OuterClass>GrpcKt.kt rather than per-service
+// files, and references those nested message types by qualified name.
+
+syntax = "proto3";
+
+package proto3_bundled;
+
+option java_package = "com.example.proto3_bundled";
+option java_outer_classname = "Proto3BundledProto";
+// java_multiple_files deliberately omitted -- defaults to false.
+
+message InvoiceRequest {
+  string id = 1;
+}
+
+message InvoiceResponse {
+  string id = 1;
+  int64 amount_cents = 2;
+}
+
+service InvoiceService {
+  rpc GetInvoice(InvoiceRequest) returns (InvoiceResponse);
+}

@@ -1,9 +1,14 @@
+// Matrix cell: proto3 with `java_multiple_files = true`.
+//
+// Also carries leading comments on the service and every RPC, so this is
+// the fixture wired into the e2e build with --grpc-kotlin_opt=comments=true.
+
 syntax = "proto3";
 
-package test.echo;
+package proto3_multifiles;
 
-option java_package = "com.example.echo";
-option java_outer_classname = "EchoProto";
+option java_package = "com.example.proto3_multifiles";
+option java_outer_classname = "Proto3MultifilesProto";
 option java_multiple_files = true;
 
 message EchoRequest {
@@ -15,8 +20,8 @@ message EchoResponse {
   int32 sequence = 2;
 }
 
-// EchoService is the canonical e2e fixture used to verify all four RPC
-// kinds round-trip correctly through our generator.
+// EchoService is the canonical fixture used to verify all four RPC kinds
+// round-trip correctly through our generator.
 service EchoService {
   // Unary echo: sends one request and waits for one reply.
   rpc Unary(EchoRequest) returns (EchoResponse);

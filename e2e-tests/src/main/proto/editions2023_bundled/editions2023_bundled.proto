@@ -1,0 +1,26 @@
+// Matrix cell: edition 2023 with `java_multiple_files = false`.
+//
+// Editions still allow `java_multiple_files` (it isn't removed until 2024),
+// so the bundled-output path applies on the 2023 line too. Verify the
+// generator picks the bundled-file branch and references the nested
+// messages with their qualified names.
+
+edition = "2023";
+
+package editions2023_bundled;
+
+option java_package = "com.example.editions2023_bundled";
+option java_outer_classname = "Editions2023BundledProto";
+option java_multiple_files = false;
+
+message LookupRequest {
+  string key = 1;
+}
+
+message LookupResponse {
+  string value = 1;
+}
+
+service LookupService {
+  rpc Lookup(LookupRequest) returns (LookupResponse);
+}

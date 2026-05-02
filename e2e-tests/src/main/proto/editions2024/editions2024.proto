@@ -1,0 +1,28 @@
+// Matrix cell: edition 2024.
+//
+// `java_multiple_files` was removed in 2024 and multi-file output is the
+// default, so the option is omitted here but per-service .kt files still
+// get emitted via DescriptorUtil.isJavaMultipleFiles's edition default.
+
+edition = "2024";
+
+package editions2024;
+
+option java_package = "com.example.editions2024";
+option java_outer_classname = "Editions2024Proto";
+
+message ChatMessage {
+  string user = 1;
+  string text = 2;
+}
+
+message ChatAck {
+  int64 id = 1;
+}
+
+service ChatService {
+  rpc Send(ChatMessage) returns (ChatAck);
+  rpc Subscribe(ChatAck) returns (stream ChatMessage);
+  rpc Bulk(stream ChatMessage) returns (ChatAck);
+  rpc Live(stream ChatMessage) returns (stream ChatMessage);
+}

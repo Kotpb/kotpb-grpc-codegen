@@ -1,0 +1,29 @@
+// Matrix cell: maximum name collisions.
+//
+// Every nameable element shares the identifier `collision`/`Collision`:
+//   - proto package, kotlin package, message, field, method
+// (service is `CollisionService` because protoc disallows a same-named
+// service + message in the same scope.)
+//
+// Regression net for grpc/grpc-kotlin#467 -- if any reference in the
+// generated .kt lacked a proper qualifier KotlinPoet would resolve the
+// wrong symbol and either compilation or the RPC wiring would fail.
+
+syntax = "proto3";
+
+package collision;
+
+option java_package = "collision";
+option java_outer_classname = "NameCollisionsProto";
+option java_multiple_files = true;
+
+message Collision {
+  string collision = 1;
+}
+
+service CollisionService {
+  // Absolute qualifier on the request/response types -- when the method
+  // name matches the message name protoc's relative resolution gets
+  // confused.
+  rpc Collision(.collision.Collision) returns (.collision.Collision);
+}

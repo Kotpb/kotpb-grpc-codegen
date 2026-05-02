@@ -1,9 +1,9 @@
 package io.github.grpckotlin.e2e
 
-import com.example.multi.Ping
-import com.example.multi.PingServiceGrpcKt
-import com.example.multi.Pong
-import com.example.multi.PongServiceGrpcKt
+import com.example.multi_services.Ping
+import com.example.multi_services.PingServiceGrpcKt
+import com.example.multi_services.Pong
+import com.example.multi_services.PongServiceGrpcKt
 import io.grpc.inprocess.InProcessChannelBuilder
 import io.grpc.inprocess.InProcessServerBuilder
 import kotlinx.coroutines.test.runTest
@@ -17,7 +17,7 @@ import org.junit.jupiter.api.Test
  * coexisting `<Service>GrpcKt` outer objects in one generated `.kt` file, and
  * that both can be served simultaneously from a single in-process channel.
  */
-class MultiServiceTest {
+class MultiServicesTest {
     private lateinit var server: io.grpc.Server
     private lateinit var channel: io.grpc.ManagedChannel
     private lateinit var pingStub: PingServiceGrpcKt.PingServiceCoroutineStub
@@ -55,9 +55,9 @@ class MultiServiceTest {
     @Test
     fun `each service has its own service descriptor with the canonical FQ name`() {
         assertThat(PingServiceGrpcKt.serviceDescriptor.name)
-            .isEqualTo("test.multi.PingService")
+            .isEqualTo("multi_services.PingService")
         assertThat(PongServiceGrpcKt.serviceDescriptor.name)
-            .isEqualTo("test.multi.PongService")
+            .isEqualTo("multi_services.PongService")
     }
 
     @Test

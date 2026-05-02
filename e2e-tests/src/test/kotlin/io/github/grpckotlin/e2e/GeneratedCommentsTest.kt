@@ -10,15 +10,17 @@ import java.nio.file.Paths
  * `.proto` -> protoc -> our plugin -> generated `.kt` on disk.
  *
  * The e2e build configures the grpckt plugin with `comments=true`, and
- * `echo.proto` carries leading comments on the service and on each RPC.
+ * `proto3_multifiles.proto` (the comments-bearing fixture) has leading
+ * comments on the service and on every RPC.
  */
 class GeneratedCommentsTest {
     private val generatedSource: String by lazy {
-        // echo.proto has java_multiple_files=true, so we emit one .kt per
-        // service named after the service rather than the proto's outer class.
+        // proto3_multifiles.proto has java_multiple_files=true, so we emit
+        // one .kt per service named after the service rather than the
+        // proto's outer class.
         val path = Paths.get(
             "build", "generated", "sources", "proto", "main",
-            "grpckt", "com", "example", "echo", "EchoServiceGrpcKt.kt",
+            "grpckt", "com", "example", "proto3_multifiles", "EchoServiceGrpcKt.kt",
         )
         check(Files.exists(path)) { "Generated source not found at $path" }
         Files.readString(path)
@@ -26,7 +28,7 @@ class GeneratedCommentsTest {
 
     @Test
     fun `service-level comment appears in generated source`() {
-        assertThat(generatedSource).contains("EchoService is the canonical e2e fixture")
+        assertThat(generatedSource).contains("EchoService is the canonical fixture")
     }
 
     @Test

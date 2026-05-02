@@ -1,8 +1,8 @@
 package io.github.grpckotlin.e2e
 
-import com.example.echo.EchoRequest
-import com.example.echo.EchoResponse
-import com.example.echo.EchoServiceGrpcKt
+import com.example.proto3_multifiles.EchoRequest
+import com.example.proto3_multifiles.EchoResponse
+import com.example.proto3_multifiles.EchoServiceGrpcKt
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.toList
@@ -11,7 +11,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.RegisterExtension
 
-class Proto3EchoTest {
+class Proto3MultifilesTest {
     @JvmField
     @RegisterExtension
     val grpc = InProcessGrpcExtension(

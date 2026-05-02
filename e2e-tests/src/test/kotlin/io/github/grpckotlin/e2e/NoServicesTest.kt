@@ -14,7 +14,7 @@ import java.nio.file.Paths
  * normal e2e build, so the run that produces this test's binaries is also
  * the run that exercises the contract.
  */
-class NoServiceNoOutputTest {
+class NoServicesTest {
     private val grpcKtRoot = Paths.get("build", "generated", "sources", "proto", "main", "grpckt")
     private val javaRoot = Paths.get("build", "generated", "sources", "proto", "main", "java")
 
@@ -23,8 +23,8 @@ class NoServiceNoOutputTest {
         // Sanity check that the proto was actually picked up by the build:
         // the Java messages should exist. If this fails, the assertions below
         // would pass for the wrong reason.
-        val ping = javaRoot.resolve("com/example/messages_only/Ping.java")
-        val pong = javaRoot.resolve("com/example/messages_only/Pong.java")
+        val ping = javaRoot.resolve("com/example/no_services/Ping.java")
+        val pong = javaRoot.resolve("com/example/no_services/Pong.java")
         assertThat(Files.exists(ping)).withFailMessage("expected $ping").isTrue()
         assertThat(Files.exists(pong)).withFailMessage("expected $pong").isTrue()
     }
@@ -32,7 +32,7 @@ class NoServiceNoOutputTest {
     @Test
     fun `our plugin emits no Kotlin file for messages_only_proto`() {
         val expectedIfWeGenerated = grpcKtRoot.resolve(
-            "com/example/messages_only/MessagesOnlyProtoGrpcKt.kt"
+            "com/example/no_services/NoServicesProtoGrpcKt.kt"
         )
         assertThat(Files.exists(expectedIfWeGenerated))
             .withFailMessage(
@@ -47,7 +47,7 @@ class NoServiceNoOutputTest {
         // Catch-all: the entire directory tree under grpckt for this proto's
         // package should not exist (or be empty), even if a future change
         // started emitting a differently-named file.
-        val pkgDir = grpcKtRoot.resolve("com/example/messages_only")
+        val pkgDir = grpcKtRoot.resolve("com/example/no_services")
         if (Files.exists(pkgDir)) {
             val entries = Files.newDirectoryStream(pkgDir).use { it.toList() }
             assertThat(entries)

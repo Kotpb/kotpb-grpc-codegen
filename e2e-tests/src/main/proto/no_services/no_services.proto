@@ -1,0 +1,20 @@
+// Matrix cell: a .proto with messages but no `service`.
+//
+// Our plugin recognises serviceCount == 0 and emits zero
+// CodeGeneratorResponse.File entries -- not a crash, not a stub file.
+
+syntax = "proto3";
+
+package no_services;
+
+option java_package = "com.example.no_services";
+option java_outer_classname = "NoServicesProto";
+option java_multiple_files = true;
+
+message Ping {
+  string token = 1;
+}
+
+message Pong {
+  string token = 1;
+}

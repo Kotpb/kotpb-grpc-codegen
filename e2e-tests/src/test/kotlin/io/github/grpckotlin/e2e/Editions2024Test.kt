@@ -1,8 +1,8 @@
 package io.github.grpckotlin.e2e
 
-import com.example.chat.ChatAck
-import com.example.chat.ChatMessage
-import com.example.chat.ChatServiceGrpcKt
+import com.example.editions2024.ChatAck
+import com.example.editions2024.ChatMessage
+import com.example.editions2024.ChatServiceGrpcKt
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.toList
@@ -11,7 +11,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.RegisterExtension
 
-class Editions2024ChatTest {
+class Editions2024Test {
     @JvmField
     @RegisterExtension
     val grpc = InProcessGrpcExtension(
