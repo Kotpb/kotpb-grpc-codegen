@@ -2,6 +2,7 @@ plugins {
     id("grpckotlin.kotlin-conventions")
     application
     alias(libs.plugins.graalvm.native)
+    `maven-publish`
 }
 
 application {
@@ -86,5 +87,92 @@ graalvmNative {
     // can rely on that and skip the external repo.
     metadataRepository {
         enabled.set(false)
+    }
+}
+
+// -------------------------------------------------------------------
+// Maven publication: native binary as classifier artifact
+// -------------------------------------------------------------------
+//
+// Each per-platform CI job invokes:
+//
+//     ./gradlew :plugin:publishToMavenLocal \
+//         -PnativeBinaryFile=plugin/build/native/nativeCompile/protoc-gen-grpc-kotlin \
+//         -PnativeBinaryClassifier=linux-x86_64
+//
+// producing
+//
+//     io.github.grpckotlin:protoc-gen-grpc-kotlin:VERSION:linux-x86_64@exe
+//
+// Same GAV across every platform, only the classifier varies. Consumers
+// then use the protobuf-gradle-plugin's standard syntax:
+//
+//     protobuf {
+//         plugins {
+//             id("grpckt") {
+//                 artifact = "io.github.grpckotlin:protoc-gen-grpc-kotlin:VERSION"
+//             }
+//         }
+//     }
+//
+// and protobuf-gradle-plugin auto-resolves the matching classifier for
+// the host OS and architecture.
+
+publishing {
+    publications {
+        create<MavenPublication>("nativeBinary") {
+            groupId = "io.github.grpckotlin"
+            artifactId = "protoc-gen-grpc-kotlin"
+            version = project.version.toString()
+
+            val binaryPath = project.findProperty("nativeBinaryFile") as? String
+            val classifier = project.findProperty("nativeBinaryClassifier") as? String
+            if (binaryPath != null && classifier != null) {
+                artifact(file(binaryPath)) {
+                    this.classifier = classifier
+                    extension = "exe" // Maven convention for protoc plugins, even on Unix.
+                }
+            }
+
+            pom {
+                name.set("protoc-gen-grpc-kotlin (native)")
+                description.set(
+                    "Pure-Kotlin protoc plugin for gRPC Kotlin coroutine stubs. " +
+                        "Native binary; runs without a JVM."
+                )
+                url.set("https://github.com/grpckotlin/grpc-kotlin")
+                licenses {
+                    license {
+                        name.set("Apache-2.0")
+                        url.set("https://www.apache.org/licenses/LICENSE-2.0.txt")
+                    }
+                }
+                developers {
+                    developer {
+                        id.set("grpckotlin")
+                        name.set("grpc-kotlin maintainers")
+                    }
+                }
+                scm {
+                    url.set("https://github.com/grpckotlin/grpc-kotlin")
+                    connection.set("scm:git:https://github.com/grpckotlin/grpc-kotlin.git")
+                    developerConnection.set("scm:git:ssh://github.com/grpckotlin/grpc-kotlin.git")
+                }
+            }
+        }
+    }
+
+    repositories {
+        // Useful for local consumer testing.
+        mavenLocal()
+
+        // Sonatype OSSRH / Maven Central is the production target. To enable,
+        // set OSSRH_USERNAME / OSSRH_PASSWORD secrets and (if you want
+        // staging/release automation) add gradle-nexus-publish-plugin in
+        // settings.gradle.kts. Until then this block is a no-op staging dir.
+        maven {
+            name = "stagingForCi"
+            url = uri(layout.buildDirectory.dir("staging-deploy"))
+        }
     }
 }

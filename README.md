@@ -60,6 +60,53 @@ Local prerequisites:
 GraalVM JDK 21 itself is downloaded automatically by Gradle's foojay
 toolchain resolver — no separate install required.
 
+### Consuming the native binary as a protoc plugin
+
+The native binaries are published with **classifier-per-platform** Maven
+naming, the same shape `protoc-gen-grpc-java` uses, so they're consumable
+directly from `protobuf-gradle-plugin` (or its Maven equivalent):
+
+```kotlin
+protobuf {
+    plugins {
+        id("grpckt") {
+            artifact = "io.github.grpckotlin:protoc-gen-grpc-kotlin:<version>"
+        }
+    }
+    generateProtoTasks {
+        all().forEach { task ->
+            task.plugins { id("grpckt") }
+        }
+    }
+}
+```
+
+`protobuf-gradle-plugin` auto-resolves the matching classifier for the
+host OS / arch and runs the binary as a `--plugin=` to protoc — no JVM
+required on the consumer side.
+
+Available classifiers (Maven convention; `_64` with underscore):
+
+| classifier | binary |
+|---|---|
+| `linux-x86_64`   | musl-static |
+| `linux-aarch_64` | musl-static |
+| `osx-x86_64`     | dynamic (libSystem) |
+| `osx-aarch_64`   | dynamic (libSystem) |
+| `windows-x86_64` | dynamic (msvcrt) |
+
+**Local install** (for testing the integration before a release is
+published):
+
+```bash
+./gradlew :plugin:nativeCompile
+./gradlew :plugin:publishNativeBinaryPublicationToMavenLocal \
+    -PnativeBinaryFile=plugin/build/native/nativeCompile/protoc-gen-grpc-kotlin \
+    -PnativeBinaryClassifier=$(uname -m | sed 's/x86_64/linux-x86_64/;s/aarch64/linux-aarch_64/;s/arm64/osx-aarch_64/')
+```
+
+Consumer build adds `mavenLocal()` to repositories.
+
 ### Cross-platform binaries via CI
 
 `.github/workflows/native-binaries.yml` runs on every push of a `v*` tag
@@ -93,6 +140,29 @@ or resource-lookup behavior that survived `--strict-image-heap` but
 still misbehaves at runtime. A binary that compiled but produces
 different output than the JVM build fails the workflow and is never
 published.
+
+### Maven Central publishing (TODO for the maintainer)
+
+The Gradle publication skeleton is in place — `:plugin` produces a
+`nativeBinary` Maven publication with the classifier-per-platform shape
+described above, and the CI workflow uploads each platform's staging
+directory as an artifact. To turn that into actual Maven Central
+releases you need to:
+
+1. Claim the `io.github.grpckotlin` namespace on Sonatype Central (or
+   change the `groupId` in `:plugin/build.gradle.kts` to a namespace you
+   already own).
+2. Add a GPG signing key (Maven Central requires `.asc` signatures on
+   every artifact).
+3. Apply `io.github.gradle-nexus.publish-plugin` in `settings.gradle.kts`
+   and add a publish job to `.github/workflows/native-binaries.yml`
+   that downloads all `maven-staging-*` artifacts and runs
+   `:closeAndReleaseStagingRepository` with the credentials in
+   `${{ secrets.OSSRH_USERNAME }}` / `${{ secrets.OSSRH_PASSWORD }}` /
+   `${{ secrets.SIGNING_KEY }}`.
+
+Until then, releases land as binary attachments on the GitHub Release
+page.
 
 ### Build-flag rationale
 

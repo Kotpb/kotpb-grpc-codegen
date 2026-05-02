@@ -17,36 +17,37 @@ permissions:
 
 jobs:
   build:
-    name: ${{ matrix.target }}
+    name: ${{ matrix.classifier }}
     strategy:
       fail-fast: false
       matrix:
+        # `classifier` follows the protobuf-gradle-plugin convention so the
+        # binaries can be consumed as `<group>:<artifact>:<version>:<classifier>@exe`.
+        # Note the `_64` (with underscore) on aarch_64 / x86_64 — that's the
+        # Maven Central convention `protoc-gen-grpc-java` and friends use.
         include:
-          # Static-link against musl on Linux (both arches) so the binary
-          # runs on every glibc version and inside minimal containers
-          # (alpine, distroless).
           - os: ubuntu-latest
-            target: linux-x86_64
+            classifier: linux-x86_64
             binary: protoc-gen-grpc-kotlin
             musl: true
             extra-build-args: '--static --libc=musl'
           - os: ubuntu-24.04-arm
-            target: linux-aarch64
+            classifier: linux-aarch_64
             binary: protoc-gen-grpc-kotlin
             musl: true
             extra-build-args: '--static --libc=musl'
           - os: macos-13
-            target: macos-x86_64
+            classifier: osx-x86_64
             binary: protoc-gen-grpc-kotlin
             musl: false
             extra-build-args: ''
           - os: macos-latest
-            target: macos-aarch64
+            classifier: osx-aarch_64
             binary: protoc-gen-grpc-kotlin
             musl: false
             extra-build-args: ''
           - os: windows-latest
-            target: windows-x86_64
+            classifier: windows-x86_64
             binary: protoc-gen-grpc-kotlin.exe
             musl: false
             extra-build-args: ''
@@ -68,12 +69,18 @@ jobs:
         if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1
 
+      - name: Read project version
+        id: ver
+        shell: bash
+        run: |
+          v=$(./gradlew -q :plugin:properties --no-daemon | awk '/^version: /{print $2}')
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          echo "Project version: $v"
+
       - name: Build native binary and JVM distribution
         shell: bash
         run: |
           extra="${{ matrix.extra-build-args }}"
-          # installDist gives us the JVM-mode plugin script we'll diff
-          # against; nativeCompile gives us the native binary under test.
           if [[ -n "$extra" ]]; then
             ./gradlew :plugin:nativeCompile :plugin:installDist --no-daemon \
               -PextraNativeBuildArgs="$extra"
@@ -87,12 +94,9 @@ jobs:
           version: '34.x'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
 
-      # Smoke test: invoke the produced native binary as a real protoc
-      # plugin and verify its output is byte-identical to the JVM-mode
-      # plugin's output on the same input. Any divergence here means
-      # native-image broke something (reflection, class init, resource
-      # lookup, ...) -- and the only way to know is to compare against
-      # the trusted JVM build.
+      # Smoke test: native binary's output must match the JVM dist's output
+      # byte-for-byte on the same input. Catches reflection / class-init
+      # regressions that survive --strict-image-heap.
       - name: Smoke-test native binary against JVM output
         shell: bash
         run: |
@@ -113,7 +117,6 @@ jobs:
           fixture_dir="e2e-tests/src/main/proto/proto3_multifiles"
           fixture="proto3_multifiles.proto"
 
-          # Run the same proto through both plugins.
           protoc --plugin=protoc-gen-grpc-kotlin="$native_binary" \
                  --grpc-kotlin_out="$native_out" \
                  -I "$fixture_dir" "$fixture"
@@ -122,39 +125,64 @@ jobs:
                  -I "$fixture_dir" "$fixture"
 
           rel="com/example/proto3_multifiles/EchoServiceGrpcKt.kt"
-          native_file="$native_out/$rel"
-          jvm_file="$jvm_out/$rel"
+          test -f "$native_out/$rel" || { echo "FAIL: native binary produced no $rel"; exit 1; }
+          test -f "$jvm_out/$rel"    || { echo "FAIL: JVM dist produced no $rel";    exit 1; }
 
-          test -f "$native_file" || { echo "FAIL: native binary produced no $rel"; exit 1; }
-          test -f "$jvm_file"    || { echo "FAIL: JVM dist produced no $rel";    exit 1; }
-
-          # Byte-for-byte comparison. KotlinPoet output is deterministic
-          # (no timestamps, stable iteration order), so any difference
-          # here is a real regression.
-          if ! diff -u "$jvm_file" "$native_file"; then
-            echo "FAIL: native binary output diverges from JVM output on ${{ matrix.target }}"
+          if ! diff -u "$jvm_out/$rel" "$native_out/$rel"; then
+            echo "FAIL: native binary output diverges from JVM output on ${{ matrix.classifier }}"
             exit 1
           fi
+          echo "Smoke test passed on ${{ matrix.classifier }}: native ≡ JVM."
 
-          echo "Smoke test passed on ${{ matrix.target }}: native output is identical to JVM output."
-
-      - name: Stage artifact
+      # Stage the binary using the Maven artifact naming convention --
+      #   protoc-gen-grpc-kotlin-<version>-<classifier>.exe
+      # -- so consumers pulling from a Maven repo (or downloading from a
+      # GitHub Release) get a filename that matches the classifier they
+      # requested. The `.exe` extension is the Maven convention for protoc
+      # plugins, used uniformly across all OSes.
+      - name: Stage Maven-conventional artifact
+        id: stage
         shell: bash
         run: |
+          set -euo pipefail
+          version="${{ steps.ver.outputs.version }}"
+          classifier="${{ matrix.classifier }}"
+          src="plugin/build/native/nativeCompile/${{ matrix.binary }}"
+          dst_name="protoc-gen-grpc-kotlin-${version}-${classifier}.exe"
+
           mkdir -p out
-          if [[ "${{ runner.os }}" == "Windows" ]]; then
-            cp "plugin/build/native/nativeCompile/${{ matrix.binary }}" "out/protoc-gen-grpc-kotlin-${{ matrix.target }}.exe"
-          else
-            cp "plugin/build/native/nativeCompile/${{ matrix.binary }}" "out/protoc-gen-grpc-kotlin-${{ matrix.target }}"
-            chmod +x "out/protoc-gen-grpc-kotlin-${{ matrix.target }}"
+          cp "$src" "out/$dst_name"
+          if [[ "${{ runner.os }}" != "Windows" ]]; then
+            chmod +x "out/$dst_name"
           fi
           ls -la out/
+          echo "artifact-name=$dst_name" >> "$GITHUB_OUTPUT"
 
-      - name: Upload artifact
+      # Also publish to the local Gradle staging dir so the Maven POM and
+      # checksums (.md5 / .sha1 / .sha256) are produced alongside the
+      # binary. The staging dir is uploaded so the aggregator job can
+      # collect everything across platforms and (if creds present) push
+      # to Sonatype as a single release.
+      - name: Publish to local Maven staging dir
+        shell: bash
+        run: |
+          ./gradlew :plugin:publishNativeBinaryPublicationToStagingForCiRepository \
+            --no-daemon \
+            -PnativeBinaryFile="$PWD/plugin/build/native/nativeCompile/${{ matrix.binary }}" \
+            -PnativeBinaryClassifier="${{ matrix.classifier }}"
+
+      - name: Upload binary artifact
         uses: actions/upload-artifact@v4
         with:
-          name: protoc-gen-grpc-kotlin-${{ matrix.target }}
+          name: protoc-gen-grpc-kotlin-${{ matrix.classifier }}
           path: out/*
+          if-no-files-found: error
+
+      - name: Upload Maven staging dir
+        uses: actions/upload-artifact@v4
+        with:
+          name: maven-staging-${{ matrix.classifier }}
+          path: plugin/build/staging-deploy/**
           if-no-files-found: error
 
   release:
@@ -163,10 +191,11 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:
-      - name: Download all artifacts
+      - name: Download all binary artifacts
         uses: actions/download-artifact@v4
         with:
           path: dist
+          pattern: 'protoc-gen-grpc-kotlin-*'
           merge-multiple: true
 
       - name: List downloaded files
