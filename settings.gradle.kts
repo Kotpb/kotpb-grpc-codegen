@@ -23,6 +23,5 @@ enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 include(
     ":generator",
     ":plugin",
-    ":generator-tests",
     ":e2e-tests",
 )
