@@ -71,18 +71,18 @@ object ServerBaseGenerator {
 
     private fun buildBindServiceMethod(ctx: ServiceContext): FunSpec {
         val body = CodeBlock.builder()
-            .add("return %T.builder(serviceDescriptor)\n", TypeNames.ServerServiceDefinition)
+            .addStatement("return %T.builder(serviceDescriptor)", TypeNames.ServerServiceDefinition)
         for (method in ctx.service.methodList) {
             val kind = MethodKind.of(method)
-            body.add(
-                ".addMethod(%T.%N(context, %N, ::%N))\n",
+            body.addStatement(
+                ".addMethod(%T.%N(context, %N, ::%N))",
                 TypeNames.ServerCalls,
                 kind.serverMethodDefinitionFn,
                 ctx.getMethodPropertyName(method.name),
                 ctx.kotlinMethodName(method.name),
             )
         }
-        body.add(".build()")
+        body.addStatement(".build()")
 
         val builder = FunSpec.builder("bindService")
             .addModifiers(KModifier.FINAL, KModifier.OVERRIDE)
