@@ -6,6 +6,7 @@ plugins {
 }
 
 dependencies {
+    implementation(platform(libs.grpc.bom))
     implementation(libs.protobuf.kotlin)
     implementation(libs.grpc.kotlin.stub)
     implementation(libs.grpc.protobuf)
@@ -13,6 +14,7 @@ dependencies {
     implementation(libs.grpc.api)
     implementation(libs.coroutines.core)
 
+    testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)
     testRuntimeOnly(libs.junit.platform.launcher)
     testImplementation(libs.assertj)
@@ -29,10 +31,11 @@ val grpcKotlinPluginPath: String =
         .asFile
         .absolutePath
 
-// Resolve the protoc artifact coordinates from the version catalog. We use the
-// library accessor (libs.protobuf.protoc) rather than libs.versions.protobuf,
-// because the type-safe accessor for a [versions] entry doesn't surface .get()
-// inside the protobuf-gradle-plugin's configuration block on this Gradle version.
+// libs.versions.protobuf.get() doesn't resolve inside the protobuf-gradle-plugin's
+// configuration block (Kotlin DSL accessor quirk, persists into Gradle 9.5);
+// the library accessor for the `protoc` artifact does, and toString() on a
+// MinimalExternalModuleDependency returns "group:name:version" — exactly what
+// `artifact` wants.
 protobuf {
     protoc {
         artifact = libs.protobuf.protoc.get().toString()
