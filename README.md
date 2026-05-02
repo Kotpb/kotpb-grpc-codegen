@@ -72,7 +72,7 @@ ships Java 8 bytecode (class-file major version 52):
 | `io.grpc:grpc-api:1.81.0` | 52 (Java 8) | grpc-java README: "supports Java 8 and later" |
 | `io.grpc:grpc-kotlin-stub:1.4.3` | 52 (Java 8) | Gradle module metadata: `org.gradle.jvm.version: 8` |
 | `com.google.protobuf:protobuf-java:4.34.1` | 52 (Java 8) | Manifest: `Require-Capability: osgi.ee … 1.8` |
-| `org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.10.2` | 52 (Java 8) | (single-byte verified locally) |
+| `org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.10.2` | 52 (Java 8) | local jar inspection — `cafe babe 0000 0034` |
 
 `io.grpc:grpc-bom:1.81.0` declares no consumer Java-version constraint of its
 own — it's a pure `<dependencyManagement>` BOM. The Java floor comes entirely
@@ -83,17 +83,27 @@ their own choice; we don't constrain it.
 
 ### Kotlin
 
-- **Kotlin compiler ≥ 2.0** (recommended ≥ 2.1) to consume the metadata on
-  `kotlinx-coroutines-core:1.10.2`'s artifacts cleanly without the
-  "compiled by a newer Kotlin compiler" warning.
-- **`kotlin-stdlib` ≥ 2.1.0** — forced by Gradle conflict resolution against
-  the `requires` clause in `kotlinx-coroutines-core-jvm:1.10.2`'s Gradle
-  module metadata.
-- The generated source uses only basic Kotlin features (`suspend`, `Flow`,
-  `companion object`, `@JvmStatic`, `by lazy`, default-value parameters,
-  top-level `object`, single-interface class delegation). All of those have
-  been in Kotlin since 1.1, so the generator imposes no language-version
-  floor of its own — the floor comes from the coroutines library.
+The generator emits only Kotlin 1.0–1.1 language features (`suspend`,
+`companion object`, `@JvmStatic`, `by lazy`, default-value parameters,
+top-level `object`, single-interface class delegation) plus
+`kotlinx.coroutines.flow.Flow`. So the **language-level floor from the
+generated code is Kotlin 1.3** (when `Flow` was introduced).
+
+In practice the consumer's effective Kotlin floor is set by the *library
+versions* they choose, not by our generator:
+
+| Library version on classpath | Effective Kotlin floor |
+|---|---|
+| `kotlinx-coroutines-core 1.10.2` (what we test against) | ~2.0 — its Gradle module declares `kotlin-stdlib { requires 2.1.0 }` and its bytecode is compiled by Kotlin 2.1 |
+| `kotlinx-coroutines-core 1.7.x` | 1.8 |
+| `kotlinx-coroutines-core 1.5.x` | 1.6 |
+| `kotlinx-coroutines-core 1.3.0` (the absolute minimum for `Flow`) | 1.3 |
+
+`grpc-kotlin-stub:1.4.3` declares `kotlin-stdlib:1.8.0` runtime in its POM,
+so it is not the binding constraint at our test versions; the coroutines
+library is. A consumer that wants a Kotlin 1.x compiler can use older
+coroutines (and older grpc-kotlin-stub) and the generated code will still
+compile — nothing the generator emits requires more.
 
 ### Library versions
 
