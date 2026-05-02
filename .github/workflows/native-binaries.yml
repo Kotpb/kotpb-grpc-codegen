@@ -25,15 +25,25 @@ jobs:
           - os: ubuntu-latest
             target: linux-x86_64
             binary: protoc-gen-grpc-kotlin
+            # Static-link against musl on Linux so the binary works on every
+            # glibc version and inside minimal containers (alpine, distroless).
+            musl: true
+            extra-build-args: '--static --libc=musl'
           - os: macos-13
             target: macos-x86_64
             binary: protoc-gen-grpc-kotlin
+            musl: false
+            extra-build-args: ''
           - os: macos-latest
             target: macos-aarch64
             binary: protoc-gen-grpc-kotlin
+            musl: false
+            extra-build-args: ''
           - os: windows-latest
             target: windows-x86_64
             binary: protoc-gen-grpc-kotlin.exe
+            musl: false
+            extra-build-args: ''
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -45,6 +55,8 @@ jobs:
           distribution: 'graalvm-community'
           cache: gradle
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          native-image-musl: ${{ matrix.musl }}
+          native-image-job-reports: 'true'
 
       - name: Set up MSVC (Windows)
         if: runner.os == 'Windows'
@@ -52,7 +64,13 @@ jobs:
 
       - name: Build native binary
         shell: bash
-        run: ./gradlew :plugin:nativeCompile --no-daemon
+        run: |
+          extra="${{ matrix.extra-build-args }}"
+          if [[ -n "$extra" ]]; then
+            ./gradlew :plugin:nativeCompile --no-daemon -PextraNativeBuildArgs="$extra"
+          else
+            ./gradlew :plugin:nativeCompile --no-daemon
+          fi
 
       - name: Stage artifact
         shell: bash

@@ -68,6 +68,24 @@ aarch64**, and **Windows x86_64**, attaching them to the corresponding
 GitHub Release. The same workflow can be triggered manually from the
 Actions tab to produce build artifacts without cutting a release.
 
+The Linux binary is statically linked against musl (`--static
+--libc=musl`), so it runs without glibc version surprises and works
+inside minimal containers (alpine, distroless). macOS and Windows
+binaries are dynamically linked against the platform's system C
+library — that's the only practical option there.
+
+### Build-flag rationale
+
+| Flag | Why |
+|---|---|
+| `--no-fallback` | Fail loudly instead of silently producing a slow JIT-fallback binary if reflection metadata is missing. |
+| `--strict-image-heap` | Future-default class-init mode; surfaces accidental run-time heap pollution at build time. |
+| `--link-at-build-time=io.github.grpckotlin` | Forces our own classes to fully link at build time; tiny startup win and catches missing-class errors at build. Scoped to our group so library deps still init at runtime where they need to. |
+| `-O3` | Speed-of-execution tier; the plugin runs once per protoc build so runtime savings compound. |
+| `-march=compatibility` | Broad CPU-arch compatibility (never `-march=native` since we ship the binary). |
+| `-R:MaxHeapSize=128m` | Cap at 128 MiB; the default is 80 % of physical RAM, wasteful for a one-shot CLI. |
+| `-H:+ReportExceptionStackTraces` | Better diagnostics if reflection-shaped issues surface. |
+
 ## Plugin options
 
 Pass via protoc's `--grpc-kotlin_opt=...` flag (comma-separated to combine):
