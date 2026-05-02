@@ -130,6 +130,52 @@ object TestFixtures {
     }
 
     /**
+     * Variant whose comments exercise the KDoc-rendering surface:
+     *  - multi-line (preserved)
+     *  - blank-line paragraph break
+     *  - inline backtick code span
+     *  - KDoc tag (`@param`)
+     *  - KDoc reference link (`[Type]`)
+     */
+    fun requestWithRichComments(): CodeGeneratorRequest {
+        val base = simpleRequestProto3()
+        val file = base.getProtoFile(0)
+
+        val richServiceComment = """
+             EchoService is the canonical fixture for the codegen pipeline.
+
+             It exists to demonstrate that proto comments survive as KDoc,
+             including:
+
+              - multi-line text preserved verbatim
+              - paragraph breaks via blank lines
+              - inline `code` spans rendered as KDoc backticks
+              - references to types like [EchoRequest] and [EchoResponse]
+        """.trimIndent().lineSequence().joinToString("\n") { " $it" } + "\n"
+
+        val richMethodComment = """
+             Sends an echo request and returns the reply.
+
+             @param request the message to echo
+             @return the echoed message wrapped in an EchoResponse
+        """.trimIndent().lineSequence().joinToString("\n") { " $it" } + "\n"
+
+        val sourceInfo = SourceCodeInfo.newBuilder().apply {
+            addLocationBuilder().apply {
+                addPath(6); addPath(0)
+                leadingComments = richServiceComment
+            }
+            addLocationBuilder().apply {
+                addPath(6); addPath(0); addPath(2); addPath(0)
+                leadingComments = richMethodComment
+            }
+        }
+
+        val withInfo = file.toBuilder().setSourceCodeInfo(sourceInfo).build()
+        return base.toBuilder().clearProtoFile().addProtoFile(withInfo).build()
+    }
+
+    /**
      * Variant where the service carries `option deprecated = true` and exactly
      * one of its methods (Unary) is also deprecated. The other three methods
      * remain non-deprecated so we can verify per-method targeting.
