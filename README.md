@@ -8,66 +8,32 @@ code does **not** depend on `protoc-gen-grpc-java` output. Only `protoc-gen-java
 
 Supports proto2, proto3, edition 2023, and edition 2024.
 
-## Modules
+## Contents
 
-- **`:generator`** — The codegen library. Reads `CodeGeneratorRequest`, emits Kotlin
-  via KotlinPoet.
-- **`:plugin`** — Application module that produces the `protoc-gen-grpc-kotlin`
-  executable (a thin `main()` over `:generator`).
-- **`:generator-tests`** — Unit tests for the generator: descriptor → output shape,
-  plugin options, and a negative test ensuring no `*Grpc` (grpc-java service) class
-  is referenced.
-- **`:e2e-tests`** — End-to-end tests: invokes protoc with `protoc-gen-java` and our
-  plugin against fixtures (proto2, proto3, edition 2023, edition 2024), then runs
-  in-process gRPC client/server tests for unary, server-streaming, client-streaming,
-  and bidi RPCs. Includes wire-level interop tests against hand-built `MethodDescriptor`s.
+- [Quick start (consumer)](#quick-start-consumer)
+- [Modules](#modules)
+- [Build & test](#build--test)
+- [Plugin options](#plugin-options) — `--grpc-kotlin_opt=...`
+- [Proto file options honored](#proto-file-options-honored) — `option ... = ...;`
+- [Generated code shape](#generated-code-shape)
+- [File-splitting](#file-splitting)
+- [Service descriptor accessors](#service-descriptor-accessors)
+- [Editions support](#editions-support)
+- [JVM-less native binary (GraalVM)](#jvm-less-native-binary-graalvm)
+- [Maven Central publishing (TODO)](#maven-central-publishing-todo-for-the-maintainer)
 
-## Build & test
+## Quick start (consumer)
 
-```powershell
-./gradlew build                  # compile everything + run tests
-./gradlew :generator:test        # generator unit tests only
-./gradlew :e2e-tests:test        # protoc + RPC tests only
-./gradlew :plugin:installDist    # produce the JVM protoc-gen-grpc-kotlin
-```
-
-The JVM executable lands at
-`plugin/build/install/protoc-gen-grpc-kotlin/bin/protoc-gen-grpc-kotlin[.bat]`.
-
-## JVM-less native binary (GraalVM)
-
-The plugin can be compiled to a self-contained native binary that runs
-without a JVM installed. Useful for distributing as a single executable
-or for protoc invocations on machines that don't have Java set up.
-
-### Locally
-
-```powershell
-./gradlew :plugin:nativeCompile
-```
-
-The binary lands at
-`plugin/build/native/nativeCompile/protoc-gen-grpc-kotlin[.exe]`.
-
-Local prerequisites:
-
-| Platform | Needs |
-|---|---|
-| Linux   | `gcc`, `glibc` headers (preinstalled on most distros) |
-| macOS   | Xcode command-line tools (`xcode-select --install`) |
-| Windows | Visual Studio 2022 with the C++ build tools, or run the build inside the *x64 Native Tools Command Prompt* |
-
-GraalVM JDK 21 itself is downloaded automatically by Gradle's foojay
-toolchain resolver — no separate install required.
-
-### Consuming the native binary as a protoc plugin
-
-The native binaries are published with **classifier-per-platform** Maven
-naming, the same shape `protoc-gen-grpc-java` uses, so they're consumable
-directly from `protobuf-gradle-plugin` (or its Maven equivalent):
+Once the artifacts are published to Maven Central (or any Maven repo your build
+already resolves from), wire the plugin via `protobuf-gradle-plugin`:
 
 ```kotlin
+plugins {
+    id("com.google.protobuf")
+}
+
 protobuf {
+    protoc { artifact = "com.google.protobuf:protoc:<version>" }
     plugins {
         id("grpckt") {
             artifact = "io.github.grpckotlin:protoc-gen-grpc-kotlin:<version>"
@@ -79,140 +45,99 @@ protobuf {
         }
     }
 }
+
+dependencies {
+    implementation("com.google.protobuf:protobuf-java:<version>")
+    implementation("io.grpc:grpc-kotlin-stub:<version>")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:<version>")
+    // pick a transport, e.g. io.grpc:grpc-netty-shaded
+}
 ```
 
-`protobuf-gradle-plugin` auto-resolves the matching classifier for the
-host OS / arch and runs the binary as a `--plugin=` to protoc — no JVM
-required on the consumer side.
+`protobuf-gradle-plugin` auto-resolves the matching native classifier for your
+host OS / arch. **No JVM is required at codegen time on the consumer side.**
 
-Available classifiers (Maven convention; `_64` with underscore):
+## Modules
 
-| classifier | binary |
-|---|---|
-| `linux-x86_64`   | musl-static |
-| `linux-aarch_64` | musl-static |
-| `osx-x86_64`     | dynamic (libSystem) |
-| `osx-aarch_64`   | dynamic (libSystem) |
-| `windows-x86_64` | dynamic (msvcrt) |
+- **`:generator`** — codegen library + its unit-test source set. Reads
+  `CodeGeneratorRequest`, emits Kotlin via KotlinPoet.
+- **`:plugin`** — produces `protoc-gen-grpc-kotlin`. A thin `main()` over
+  `:generator` plus the `application` plugin (for the JVM dist), the GraalVM
+  native-image plugin (for native binaries), and `maven-publish` (for the
+  classifier-per-platform Maven publication).
+- **`:e2e-tests`** — invokes `protoc` with `protoc-gen-java` and our plugin
+  against fixtures covering every (syntax × `java_multiple_files`)
+  combination, then runs in-process gRPC client/server tests for unary,
+  server-streaming, client-streaming, and bidi RPCs. Includes wire-level
+  interop tests against hand-built `MethodDescriptor`s.
+- **`buildSrc/`** — single convention plugin (`grpckotlin.kotlin-conventions`)
+  applied to every module: Kotlin/JVM 17 toolchain via foojay, JUnit 5
+  platform, reproducible jars, consistent test logging.
 
-**Local install** (for testing the integration before a release is
-published):
+## Build & test
 
-```bash
-./gradlew :plugin:nativeCompile
-./gradlew :plugin:publishNativeBinaryPublicationToMavenLocal \
-    -PnativeBinaryFile=plugin/build/native/nativeCompile/protoc-gen-grpc-kotlin \
-    -PnativeBinaryClassifier=$(uname -m | sed 's/x86_64/linux-x86_64/;s/aarch64/linux-aarch_64/;s/arm64/osx-aarch_64/')
+```powershell
+./gradlew build                   # compile + run every test (103 total)
+./gradlew :generator:test         # generator unit tests
+./gradlew :e2e-tests:test         # protoc + RPC tests
+./gradlew :plugin:installDist     # produce the JVM protoc-gen-grpc-kotlin
+./gradlew :plugin:nativeCompile   # produce the native binary (needs GraalVM
+                                  # toolchain; auto-downloaded by foojay)
 ```
 
-Consumer build adds `mavenLocal()` to repositories.
-
-### Cross-platform binaries via CI
-
-`.github/workflows/native-binaries.yml` runs on every push of a `v*` tag
-and builds binaries for five targets:
-
-| Target | Runner | Linkage |
-|---|---|---|
-| `linux-x86_64`   | `ubuntu-latest`     | static (musl) |
-| `linux-aarch64`  | `ubuntu-24.04-arm`  | static (musl) |
-| `macos-x86_64`   | `macos-13`          | dynamic (libSystem) |
-| `macos-aarch64`  | `macos-latest`      | dynamic (libSystem) |
-| `windows-x86_64` | `windows-latest`    | dynamic (msvcrt) |
-
-All five are attached to the matching GitHub Release on tag push. The
-same workflow can be triggered manually from the Actions tab to produce
-build artifacts without cutting a release.
-
-Both Linux binaries are statically linked against musl (`--static
---libc=musl`), so they run without glibc version surprises and work
-inside minimal containers (alpine, distroless). macOS and Windows are
-dynamically linked against the platform's system C library — that's the
-only practical option there.
-
-Each produced binary is **smoke-tested in CI** before upload, by
-generating the same `.proto` through both the native binary and the
-JVM-mode plugin and asserting **byte-identical output**. KotlinPoet's
-emission is deterministic (no timestamps, stable descriptor iteration),
-so any divergence between the native and JVM outputs is a genuine
-native-image regression — caused by reflection, class initialization,
-or resource-lookup behavior that survived `--strict-image-heap` but
-still misbehaves at runtime. A binary that compiled but produces
-different output than the JVM build fails the workflow and is never
-published.
-
-### Maven Central publishing (TODO for the maintainer)
-
-The Gradle publication skeleton is in place — `:plugin` produces a
-`nativeBinary` Maven publication with the classifier-per-platform shape
-described above, and the CI workflow uploads each platform's staging
-directory as an artifact. To turn that into actual Maven Central
-releases you need to:
-
-1. Claim the `io.github.grpckotlin` namespace on Sonatype Central (or
-   change the `groupId` in `:plugin/build.gradle.kts` to a namespace you
-   already own).
-2. Add a GPG signing key (Maven Central requires `.asc` signatures on
-   every artifact).
-3. Apply `io.github.gradle-nexus.publish-plugin` in `settings.gradle.kts`
-   and add a publish job to `.github/workflows/native-binaries.yml`
-   that downloads all `maven-staging-*` artifacts and runs
-   `:closeAndReleaseStagingRepository` with the credentials in
-   `${{ secrets.OSSRH_USERNAME }}` / `${{ secrets.OSSRH_PASSWORD }}` /
-   `${{ secrets.SIGNING_KEY }}`.
-
-Until then, releases land as binary attachments on the GitHub Release
-page.
-
-### Build-flag rationale
-
-| Flag | Why |
-|---|---|
-| `--no-fallback` | Fail loudly instead of silently producing a slow JIT-fallback binary if reflection metadata is missing. |
-| `--strict-image-heap` | Future-default class-init mode; surfaces accidental run-time heap pollution at build time. |
-| `--link-at-build-time=io.github.grpckotlin` | Forces our own classes to fully link at build time; tiny startup win and catches missing-class errors at build. Scoped to our group so library deps still init at runtime where they need to. |
-| `-O3` | Speed-of-execution tier; the plugin runs once per protoc build so runtime savings compound. |
-| `-march=compatibility` | Broad CPU-arch compatibility (never `-march=native` since we ship the binary). |
-| `-R:MaxHeapSize=128m` | Cap at 128 MiB; the default is 80 % of physical RAM, wasteful for a one-shot CLI. |
-| `-H:+ReportExceptionStackTraces` | Better diagnostics if reflection-shaped issues surface. |
+The JVM executable lands at
+`plugin/build/install/protoc-gen-grpc-kotlin/bin/protoc-gen-grpc-kotlin[.bat]`.
+The native binary lands at
+`plugin/build/native/nativeCompile/protoc-gen-grpc-kotlin[.exe]`.
 
 ## Plugin options
 
-Pass via protoc's `--grpc-kotlin_opt=...` flag (comma-separated to combine):
+Pass via protoc's `--grpc-kotlin_opt=...` flag (comma-separated to combine,
+e.g. `--grpc-kotlin_opt=comments,java_package=com.acme`).
 
-- `lite` (or `lite=true`) — emit `ProtoLiteUtils.marshaller(...)` instead of
-  `ProtoUtils.marshaller(...)` for use with protobuf-javalite.
-- `java_package=<pkg>` — override the Kotlin output package (otherwise resolved
-  from the file's `java_package` option, falling back to the proto package).
-- `comments` (or `comments=true`) — preserve `.proto` source comments as KDoc on
-  the generated stub class, server impl base, and per-method declarations
-  (client function, server function, and `MethodDescriptor` property).
+| Option | Effect |
+|---|---|
+| `lite` (or `lite=true`) | Emit `ProtoLiteUtils.marshaller(...)` instead of `ProtoUtils.marshaller(...)`. See note below. |
+| `comments` (or `comments=true`) | Preserve `.proto` source leading comments as KDoc on the outer object, the stub class, the impl base, the `MethodDescriptor` properties, and every per-method client/server function. Off by default. |
+| `java_package=<pkg>` | Override the Kotlin output package. Otherwise resolved from the file's `option java_package`, falling back to the proto `package`. |
 
-## Service descriptor accessors
+### When to use `lite`
 
-The `ServiceDescriptor` is exposed in three places, all referring to the same
-singleton instance:
+This is a small but real distinction. At runtime, `ProtoUtils.marshaller(T)` in
+`io.grpc:grpc-protobuf` *delegates straight to* `ProtoLiteUtils.marshaller(T)` in
+`io.grpc:grpc-protobuf-lite` — same marshaller object, only the type bound and
+the *import* differ:
 
-- `<package>.<Service>GrpcKt.serviceDescriptor` — top-level on the outer object.
-- `<Service>CoroutineStub.serviceDescriptor` — `@JvmStatic` companion accessor,
-  reachable via the stub class alone (handy when reading service options
-  reflectively from code that already imports the stub type).
-- `<Service>CoroutineImplBase.serviceDescriptor` — same accessor on the impl
-  base, plus `bindService()` already wires the descriptor into the
-  `ServerServiceDefinition` it returns.
+- Default (`lite` unset): generated code imports
+  `io.grpc.protobuf.ProtoUtils`, which requires `T : com.google.protobuf.Message`
+  (full, descriptor-bearing messages from `protoc-gen-java`). The consumer must
+  depend on `io.grpc:grpc-protobuf`.
+- `lite=true`: generated code imports `io.grpc.protobuf.lite.ProtoLiteUtils`,
+  which accepts `T : com.google.protobuf.MessageLite` (lite messages from
+  `protoc-gen-javalite` and full messages alike — `Message extends MessageLite`).
+  The consumer can depend only on the smaller `io.grpc:grpc-protobuf-lite`.
 
-## Deprecation handling
+So pick `lite=true` exactly when your messages come from `protoc-gen-javalite`
+and you want to drop the `grpc-protobuf` dependency. For everyone else, the
+default is correct.
 
-`option deprecated = true` on a service or RPC produces matching `@Deprecated`
-annotations in the Kotlin output:
+## Proto file options honored
 
-- A deprecated **service** marks `<Service>CoroutineStub` and
-  `<Service>CoroutineImplBase`.
-- A deprecated **RPC** marks the client stub function, the server impl-base
-  function, and the `MethodDescriptor` property for that method.
-- The generated `bindService()` body, which has to reference deprecated methods
-  internally, gets `@Suppress("DEPRECATION")` to keep the generated code
-  compiling cleanly.
+Standard protobuf file/service/method options that affect codegen:
+
+| Option | Effect |
+|---|---|
+| `option java_package = "...";` | Used as the Kotlin output package. Plugin option `--grpc-kotlin_opt=java_package=...` overrides it; otherwise the proto `package` is the fallback. |
+| `option java_outer_classname = "...";` | The Java class containing `getDescriptor()` for the proto file. Our descriptor suppliers reference it. If unset, derived from the filename (`my_proto.proto` → `MyProto`); if that derivation collides with a top-level message/enum/service, `OuterClass` is appended (matching `protoc-gen-java`'s rule exactly). |
+| `option java_multiple_files = true;` | Emit one Kotlin file per service: `<Service>GrpcKt.kt`. Otherwise every service in the `.proto` is bundled into `<OuterClass>GrpcKt.kt`. **Removed in editions 2024**, where multi-file output is the default. |
+| `option deprecated = true;` (on a `service`) | Emits `@Deprecated("This service is deprecated.")` on `<Service>CoroutineStub` and `<Service>CoroutineImplBase`. |
+| `option deprecated = true;` (on an `rpc`) | Emits `@Deprecated("This RPC is deprecated.")` on the client stub fn, the server impl-base fn, and the `MethodDescriptor` property. `bindService()` gets `@Suppress("DEPRECATION")` because it must reference deprecated methods internally. |
+
+What the plugin does **not** consume from `.proto`:
+
+- Field-level features, types, `oneof`, enums, etc. — those are `protoc-gen-java`'s domain.
+- `option go_package`, `option csharp_namespace`, language-specific options other than the `java_*` ones above.
+- Custom options.
 
 ## Generated code shape
 
@@ -230,22 +155,53 @@ object FooGrpcKt {
             ProtoServiceDescriptorSupplier by FooFileDescriptorSupplier
 
     class FooCoroutineStub(channel: Channel, callOptions: CallOptions = CallOptions.DEFAULT)
-        : AbstractCoroutineStub<FooCoroutineStub>(channel, callOptions) { ... }
+        : AbstractCoroutineStub<FooCoroutineStub>(channel, callOptions) {
+
+        companion object { @JvmStatic val serviceDescriptor: ServiceDescriptor }
+
+        suspend fun unary(request: ReqT, headers: Metadata = Metadata()): RespT
+        fun serverStream(request: ReqT, headers: Metadata = Metadata()): Flow<RespT>
+        suspend fun clientStream(requests: Flow<ReqT>, headers: Metadata = Metadata()): RespT
+        fun bidiStream(requests: Flow<ReqT>, headers: Metadata = Metadata()): Flow<RespT>
+    }
 
     abstract class FooCoroutineImplBase(coroutineContext: CoroutineContext = EmptyCoroutineContext)
-        : AbstractCoroutineServerImpl(coroutineContext), BindableService { ... }
+        : AbstractCoroutineServerImpl(coroutineContext), BindableService {
+
+        companion object { @JvmStatic val serviceDescriptor: ServiceDescriptor }
+
+        open suspend fun unary(request: ReqT): RespT          // throws UNIMPLEMENTED by default
+        open fun serverStream(request: ReqT): Flow<RespT>     // throws UNIMPLEMENTED by default
+        open suspend fun clientStream(requests: Flow<ReqT>): RespT
+        open fun bidiStream(requests: Flow<ReqT>): Flow<RespT>
+
+        final override fun bindService(): ServerServiceDefinition
+    }
 }
 ```
 
-### File-splitting
+## File-splitting
 
 Output mirrors `protoc-gen-java`'s behaviour:
 
 - **`option java_multiple_files = true`** (or any edition 2024+ proto, where
   it's the default): one Kotlin file per service, named `<Service>GrpcKt.kt`.
-- **`java_multiple_files` unset / false**: every service in the proto is
+- **`java_multiple_files` unset / false**: every service in the `.proto` is
   bundled into a single file named after the proto's outer class:
   `<OuterClass>GrpcKt.kt`.
+
+## Service descriptor accessors
+
+The `ServiceDescriptor` is exposed in three places, all referring to the same
+singleton instance:
+
+- `<package>.<Service>GrpcKt.serviceDescriptor` — top-level on the outer object.
+- `<Service>CoroutineStub.serviceDescriptor` — `@JvmStatic` companion accessor,
+  reachable via the stub class alone (handy when reading service options
+  reflectively from code that already imports the stub type).
+- `<Service>CoroutineImplBase.serviceDescriptor` — same accessor on the impl
+  base, plus `bindService()` already wires the descriptor into the
+  `ServerServiceDefinition` it returns.
 
 ## Editions support
 
@@ -259,7 +215,120 @@ maximum_edition = EDITION_2024
 
 Service codegen does not depend on field-level `FeatureSet` resolution; protoc
 resolves features for the file/message/field descriptors before sending them.
-
 In edition 2024, the `java_multiple_files` option was removed and multi-file
-output is the default. The generator handles this automatically when resolving
-message Java class names.
+output is the default — the generator handles this automatically when
+resolving message Java class names and file-splitting.
+
+## JVM-less native binary (GraalVM)
+
+The plugin compiles to a self-contained native binary that runs without a JVM
+installed. Useful for distributing as a single executable or for protoc
+invocations on machines that don't have Java set up.
+
+### Locally
+
+```powershell
+./gradlew :plugin:nativeCompile
+```
+
+GraalVM JDK 21 itself is downloaded automatically by Gradle's foojay
+toolchain resolver — no separate install required. Per-platform OS toolchain
+prerequisites still apply:
+
+| Platform | Needs |
+|---|---|
+| Linux   | `gcc`, `glibc` headers (preinstalled on most distros) |
+| macOS   | Xcode command-line tools (`xcode-select --install`) |
+| Windows | Visual Studio 2022 with the C++ build tools, or run inside the *x64 Native Tools Command Prompt* |
+
+### Cross-platform binaries via CI
+
+`.github/workflows/native-binaries.yml` runs on every push of a `v*` tag and
+builds binaries for five targets, attaching them to the matching GitHub
+Release. The same workflow can be triggered manually from the Actions tab.
+
+| Classifier | Runner | Linkage |
+|---|---|---|
+| `linux-x86_64`   | `ubuntu-latest`     | static (musl) |
+| `linux-aarch_64` | `ubuntu-24.04-arm`  | static (musl) |
+| `osx-x86_64`     | `macos-13`          | dynamic (libSystem) |
+| `osx-aarch_64`   | `macos-latest`      | dynamic (libSystem) |
+| `windows-x86_64` | `windows-latest`    | dynamic (msvcrt) |
+
+Both Linux binaries are statically linked against musl (`--static
+--libc=musl`), so they run without glibc version surprises and work inside
+minimal containers (alpine, distroless). macOS and Windows are dynamically
+linked against the platform's system C library — that's the only practical
+option there.
+
+Each produced binary is **smoke-tested in CI** before upload by generating
+the same `.proto` through both the native binary and the JVM-mode plugin and
+asserting **byte-identical output**. KotlinPoet's emission is deterministic
+(no timestamps, stable descriptor iteration), so any divergence is a genuine
+native-image regression caused by reflection, class initialization, or
+resource-lookup behavior. A binary that compiled but produces different
+output than the JVM build fails the workflow and is never published.
+
+### Build-flag rationale
+
+| Flag | Why |
+|---|---|
+| `--no-fallback` | Fail loudly instead of silently producing a slow JIT-fallback binary if reflection metadata is missing. |
+| `--strict-image-heap` | Future-default class-init mode; surfaces accidental run-time heap pollution at build time. |
+| `--link-at-build-time=io.github.grpckotlin` | Forces our own classes to fully link at build time; tiny startup win and catches missing-class errors at build. Scoped to our group so library deps still init at runtime where they need to. |
+| `-O3` | Speed-of-execution tier; the plugin runs once per protoc build so runtime savings compound. |
+| `-march=compatibility` | Broad CPU-arch compatibility (never `-march=native` since we ship the binary). |
+| `-R:MaxHeapSize=128m` | Cap at 128 MiB; the default is 80 % of physical RAM, wasteful for a one-shot CLI. |
+| `-H:+ReportExceptionStackTraces` | Better diagnostics if reflection-shaped issues surface. |
+
+### Consuming the native binary as a protoc plugin
+
+The native binaries are published with **classifier-per-platform** Maven
+naming, the same shape `protoc-gen-grpc-java` uses, so they're consumable
+directly from `protobuf-gradle-plugin`:
+
+```kotlin
+protobuf {
+    plugins {
+        id("grpckt") {
+            artifact = "io.github.grpckotlin:protoc-gen-grpc-kotlin:<version>"
+        }
+    }
+}
+```
+
+`protobuf-gradle-plugin` auto-resolves the matching classifier for the host
+OS / arch and runs the binary as a `--plugin=` to protoc — no JVM required
+on the consumer side.
+
+For local integration testing before a release is published:
+
+```bash
+./gradlew :plugin:nativeCompile
+./gradlew :plugin:publishNativeBinaryPublicationToMavenLocal \
+    -PnativeBinaryFile=plugin/build/native/nativeCompile/protoc-gen-grpc-kotlin \
+    -PnativeBinaryClassifier=linux-x86_64    # adjust per host
+```
+
+Consumer build adds `mavenLocal()` to repositories.
+
+## Maven Central publishing (TODO for the maintainer)
+
+The Gradle publication skeleton is in place — `:plugin` produces a
+`nativeBinary` Maven publication with the classifier-per-platform shape
+described above, and the CI workflow uploads each platform's staging
+directory as an artifact. To turn that into actual Maven Central releases
+you need to:
+
+1. Claim the `io.github.grpckotlin` namespace on Sonatype Central (or change
+   the `groupId` in `:plugin/build.gradle.kts` to a namespace you already own).
+2. Add a GPG signing key (Maven Central requires `.asc` signatures on every
+   artifact).
+3. Apply `io.github.gradle-nexus.publish-plugin` in `settings.gradle.kts` and
+   add a publish job to `.github/workflows/native-binaries.yml` that
+   downloads all `maven-staging-*` artifacts and runs
+   `:closeAndReleaseStagingRepository` with credentials in
+   `${{ secrets.OSSRH_USERNAME }}` / `${{ secrets.OSSRH_PASSWORD }}` /
+   `${{ secrets.SIGNING_KEY }}`.
+
+Until then, releases land as binary attachments on the GitHub Release page.
