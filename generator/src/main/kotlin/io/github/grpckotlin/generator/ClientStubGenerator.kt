@@ -36,6 +36,9 @@ object ClientStubGenerator {
             )
 
         ctx.serviceComment()?.let { classBuilder.addKdoc("%L", it) }
+        if (ctx.service.options.deprecated) {
+            classBuilder.addAnnotation(Annotations.deprecated(Annotations.DEPRECATED_SERVICE_MESSAGE))
+        }
 
         ctx.service.methodList.forEachIndexed { methodIndex, method ->
             classBuilder.addFunction(buildClientMethod(ctx, method, methodIndex))
@@ -64,6 +67,9 @@ object ClientStubGenerator {
         if (!kind.serverStreaming) funBuilder.addModifiers(KModifier.SUSPEND)
 
         ctx.methodComment(methodIndex)?.let { funBuilder.addKdoc("%L", it) }
+        if (method.options.deprecated) {
+            funBuilder.addAnnotation(Annotations.deprecated(Annotations.DEPRECATED_METHOD_MESSAGE))
+        }
 
         funBuilder.addStatement(
             "return %T.%N(channel, %N, %N, callOptions, headers)",

@@ -42,6 +42,9 @@ object MethodDescriptorsGenerator {
                 TypeNames.MethodDescriptor.parameterizedBy(requestType, responseType),
             ).delegate(initializer)
             ctx.methodComment(methodIndex)?.let { property.addKdoc("%L", it) }
+            if (method.options.deprecated) {
+                property.addAnnotation(Annotations.deprecated(Annotations.DEPRECATED_METHOD_MESSAGE))
+            }
             builder.addProperty(property.build())
         }
     }

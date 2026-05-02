@@ -46,6 +46,19 @@ Pass via protoc's `--grpc-kotlin_opt=...` flag (comma-separated to combine):
   the generated stub class, server impl base, and per-method declarations
   (client function, server function, and `MethodDescriptor` property).
 
+## Deprecation handling
+
+`option deprecated = true` on a service or RPC produces matching `@Deprecated`
+annotations in the Kotlin output:
+
+- A deprecated **service** marks `<Service>CoroutineStub` and
+  `<Service>CoroutineImplBase`.
+- A deprecated **RPC** marks the client stub function, the server impl-base
+  function, and the `MethodDescriptor` property for that method.
+- The generated `bindService()` body, which has to reference deprecated methods
+  internally, gets `@Suppress("DEPRECATION")` to keep the generated code
+  compiling cleanly.
+
 ## Generated code shape
 
 For each `service Foo` in a `.proto`:

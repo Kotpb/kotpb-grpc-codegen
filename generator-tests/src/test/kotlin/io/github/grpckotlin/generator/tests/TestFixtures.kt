@@ -5,7 +5,9 @@ import com.google.protobuf.DescriptorProtos.FieldDescriptorProto
 import com.google.protobuf.DescriptorProtos.FileDescriptorProto
 import com.google.protobuf.DescriptorProtos.FileOptions
 import com.google.protobuf.DescriptorProtos.MethodDescriptorProto
+import com.google.protobuf.DescriptorProtos.MethodOptions
 import com.google.protobuf.DescriptorProtos.ServiceDescriptorProto
+import com.google.protobuf.DescriptorProtos.ServiceOptions
 import com.google.protobuf.DescriptorProtos.SourceCodeInfo
 import com.google.protobuf.compiler.PluginProtos.CodeGeneratorRequest
 
@@ -124,6 +126,41 @@ object TestFixtures {
         return base.toBuilder()
             .clearProtoFile()
             .addProtoFile(fileWithComments)
+            .build()
+    }
+
+    /**
+     * Variant where the service carries `option deprecated = true` and exactly
+     * one of its methods (Unary) is also deprecated. The other three methods
+     * remain non-deprecated so we can verify per-method targeting.
+     */
+    fun requestWithDeprecation(): CodeGeneratorRequest {
+        val base = simpleRequestProto3()
+        val file = base.getProtoFile(0)
+        val service = file.getService(0)
+
+        val methods = service.methodList.mapIndexed { idx, method ->
+            if (idx == 0) {
+                method.toBuilder()
+                    .setOptions(MethodOptions.newBuilder().setDeprecated(true))
+                    .build()
+            } else {
+                method
+            }
+        }
+        val deprecatedService = service.toBuilder()
+            .setOptions(ServiceOptions.newBuilder().setDeprecated(true))
+            .clearMethod()
+            .addAllMethod(methods)
+            .build()
+        val deprecatedFile = file.toBuilder()
+            .clearService()
+            .addService(deprecatedService)
+            .build()
+
+        return base.toBuilder()
+            .clearProtoFile()
+            .addProtoFile(deprecatedFile)
             .build()
     }
 }

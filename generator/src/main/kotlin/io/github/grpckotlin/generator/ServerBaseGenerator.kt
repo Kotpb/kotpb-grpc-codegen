@@ -25,6 +25,9 @@ object ServerBaseGenerator {
             )
 
         ctx.serviceComment()?.let { classBuilder.addKdoc("%L", it) }
+        if (ctx.service.options.deprecated) {
+            classBuilder.addAnnotation(Annotations.deprecated(Annotations.DEPRECATED_SERVICE_MESSAGE))
+        }
 
         ctx.service.methodList.forEachIndexed { methodIndex, method ->
             classBuilder.addFunction(buildOpenServerMethod(ctx, method, methodIndex))
@@ -50,6 +53,9 @@ object ServerBaseGenerator {
         if (!kind.serverStreaming) builder.addModifiers(KModifier.SUSPEND)
 
         ctx.methodComment(methodIndex)?.let { builder.addKdoc("%L", it) }
+        if (method.options.deprecated) {
+            builder.addAnnotation(Annotations.deprecated(Annotations.DEPRECATED_METHOD_MESSAGE))
+        }
 
         builder.addStatement(
             "throw %T(%T.UNIMPLEMENTED.withDescription(%S))",
@@ -75,10 +81,18 @@ object ServerBaseGenerator {
         }
         body.add(".build()")
 
-        return FunSpec.builder("bindService")
+        val builder = FunSpec.builder("bindService")
             .addModifiers(KModifier.FINAL, KModifier.OVERRIDE)
             .returns(TypeNames.ServerServiceDefinition)
             .addCode(body.build())
-            .build()
+
+        // bindService has to reference every method (deprecated or not) and
+        // every method descriptor (which is also marked deprecated when its
+        // method is). Suppress so this internal plumbing compiles cleanly.
+        if (ctx.service.options.deprecated || ctx.service.methodList.any { it.options.deprecated }) {
+            builder.addAnnotation(Annotations.suppress("DEPRECATION"))
+        }
+
+        return builder.build()
     }
 }
