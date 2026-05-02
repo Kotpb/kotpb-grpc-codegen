@@ -83,9 +83,9 @@ object FooGrpcKt {
     val getXxxMethod: MethodDescriptor<RequestT, ResponseT> by lazy { /* self-built */ }
     val serviceDescriptor: ServiceDescriptor by lazy { /* self-built */ }
 
-    private abstract class FooBaseDescriptorSupplier : ProtoFileDescriptorSupplier, ProtoServiceDescriptorSupplier
-    private class FooFileDescriptorSupplier : FooBaseDescriptorSupplier()
-    private class FooMethodDescriptorSupplier(...) : FooBaseDescriptorSupplier(), ProtoMethodDescriptorSupplier
+    private object FooFileDescriptorSupplier : ProtoServiceDescriptorSupplier
+    private class FooMethodDescriptorSupplier(...) : ProtoMethodDescriptorSupplier,
+            ProtoServiceDescriptorSupplier by FooFileDescriptorSupplier
 
     class FooCoroutineStub(channel: Channel, callOptions: CallOptions = CallOptions.DEFAULT)
         : AbstractCoroutineStub<FooCoroutineStub>(channel, callOptions) { ... }
@@ -94,6 +94,16 @@ object FooGrpcKt {
         : AbstractCoroutineServerImpl(coroutineContext), BindableService { ... }
 }
 ```
+
+### File-splitting
+
+Output mirrors `protoc-gen-java`'s behaviour:
+
+- **`option java_multiple_files = true`** (or any edition 2024+ proto, where
+  it's the default): one Kotlin file per service, named `<Service>GrpcKt.kt`.
+- **`java_multiple_files` unset / false**: every service in the proto is
+  bundled into a single file named after the proto's outer class:
+  `<OuterClass>GrpcKt.kt`.
 
 ## Editions support
 
