@@ -8,7 +8,11 @@ classes) needed — only `protoc-gen-java` for messages.
 ## Module layout
 
 - `:generator` — codegen library + its unit-test source set. KotlinPoet does
-  the emission. Entry point: `GeneratorRunner.runOnStdio()`.
+  the emission. Entry point: `GeneratorRunner.runOnStdio()`. Per-section
+  generators (`ServiceNameGenerator`, `ClientStubGenerator`, …) all follow
+  the same shape: `apply(builder: TypeSpec.Builder, ctx: ServiceContext)`,
+  orchestrated by `ProtoFileCodeGenerator`. In-memory unit-test fixtures
+  live in `TestFixtures.kt` (build `CodeGeneratorRequest` programmatically).
 - `:plugin` — application module. Produces:
   - JVM dist via `installDist`
   - native binary via `:plugin:nativeCompile` (GraalVM)
@@ -39,12 +43,16 @@ classes) needed — only `protoc-gen-java` for messages.
 ## Common commands
 
 ```powershell
-./gradlew build                   # 103 tests
-./gradlew :generator:test         # generator unit tests (~50)
-./gradlew :e2e-tests:test         # protoc + RPC (~53)
-./gradlew :plugin:installDist     # JVM dist
-./gradlew :plugin:nativeCompile   # native binary (needs GraalVM)
-./gradlew :plugin:tasks --all     # see all native + publish tasks
+./gradlew build                                   # full build + every test
+./gradlew :generator:test                         # generator unit tests
+./gradlew :e2e-tests:test                         # protoc + RPC
+./gradlew :e2e-tests:test --tests *NameCollisionsTest*   # narrow to one fixture
+./gradlew :plugin:installDist                     # JVM dist
+./gradlew :plugin:nativeCompile                   # native binary (needs GraalVM)
+./gradlew :plugin:publishNativeBinaryPublicationToMavenLocal `
+    -PnativeBinaryFile=plugin/build/native/nativeCompile/protoc-gen-grpc-kotlin `
+    -PnativeBinaryClassifier=linux-x86_64         # local Maven install for consumer testing
+./gradlew :plugin:tasks --all                     # see all native + publish tasks
 ```
 
 ## Plugin options (`--grpc-kotlin_opt=...`)
@@ -71,6 +79,9 @@ classes) needed — only `protoc-gen-java` for messages.
 - **Folder/test naming**: e2e fixtures self-describe what they test
   (`proto3_bundled/`, `name_collisions/`, …). Don't reintroduce neutral names
   like `echo/`, `greet/`.
+- **Cross-platform line endings**: KotlinPoet emits `\n` and `.gitattributes`
+  enforces LF on `.kt` files in repo. The CI native-binary smoke test
+  `diff`s native vs JVM output byte-for-byte and relies on this.
 
 ## Gotchas
 
