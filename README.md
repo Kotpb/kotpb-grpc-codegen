@@ -11,6 +11,7 @@ Supports proto2, proto3, edition 2023, and edition 2024.
 ## Contents
 
 - [Quick start (consumer)](#quick-start-consumer)
+- [Runtime requirements](#runtime-requirements)
 - [Modules](#modules)
 - [Build & test](#build--test)
 - [Plugin options](#plugin-options) — `--grpc-kotlin_opt=...`
@@ -56,6 +57,62 @@ dependencies {
 
 `protobuf-gradle-plugin` auto-resolves the matching native classifier for your
 host OS / arch. **No JVM is required at codegen time on the consumer side.**
+
+## Runtime requirements
+
+What a consumer project compiling and running the generated Kotlin code needs.
+
+### JVM
+
+**Java 8 or later.** Every runtime library our generated code links against
+ships Java 8 bytecode (class-file major version 52):
+
+| Artifact | Class major | Source of pin |
+|---|---|---|
+| `io.grpc:grpc-api:1.81.0` | 52 (Java 8) | grpc-java README: "supports Java 8 and later" |
+| `io.grpc:grpc-kotlin-stub:1.4.3` | 52 (Java 8) | Gradle module metadata: `org.gradle.jvm.version: 8` |
+| `com.google.protobuf:protobuf-java:4.34.1` | 52 (Java 8) | Manifest: `Require-Capability: osgi.ee … 1.8` |
+| `org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.10.2` | 52 (Java 8) | (single-byte verified locally) |
+
+`io.grpc:grpc-bom:1.81.0` declares no consumer Java-version constraint of its
+own — it's a pure `<dependencyManagement>` BOM. The Java floor comes entirely
+from the per-artifact bytecode level.
+
+The consumer's `jvmTarget` for *compiling* the generated Kotlin source is
+their own choice; we don't constrain it.
+
+### Kotlin
+
+- **Kotlin compiler ≥ 2.0** (recommended ≥ 2.1) to consume the metadata on
+  `kotlinx-coroutines-core:1.10.2`'s artifacts cleanly without the
+  "compiled by a newer Kotlin compiler" warning.
+- **`kotlin-stdlib` ≥ 2.1.0** — forced by Gradle conflict resolution against
+  the `requires` clause in `kotlinx-coroutines-core-jvm:1.10.2`'s Gradle
+  module metadata.
+- The generated source uses only basic Kotlin features (`suspend`, `Flow`,
+  `companion object`, `@JvmStatic`, `by lazy`, default-value parameters,
+  top-level `object`, single-interface class delegation). All of those have
+  been in Kotlin since 1.1, so the generator imposes no language-version
+  floor of its own — the floor comes from the coroutines library.
+
+### Library versions
+
+What versions we test against in `:e2e-tests`, plus the minimum versions
+that should still resolve every symbol the generated code imports.
+
+| Artifact | Tested with | Compatible since | Earliest symbol our code imports |
+|---|---|---|---|
+| `io.grpc:grpc-api` | 1.81.0 | 1.26.0 | `Channel`, `CallOptions`, `MethodDescriptor`, … (predate the API split) |
+| `io.grpc:grpc-protobuf` | 1.81.0 | 1.0 | `ProtoUtils.marshaller`, `ProtoFileDescriptorSupplier` |
+| `io.grpc:grpc-protobuf-lite` *(only when `lite=true`)* | 1.81.0 | 1.0 | `ProtoLiteUtils.marshaller` |
+| `io.grpc:grpc-kotlin-stub` | 1.4.3 | 1.0.0 (2020) | `AbstractCoroutineStub`, `AbstractCoroutineServerImpl`, `ClientCalls`, `ServerCalls` |
+| `com.google.protobuf:protobuf-java` | 4.34.1 | 3.x | `Descriptors.FileDescriptor`, `<Message>.getDefaultInstance()` |
+| `org.jetbrains.kotlinx:kotlinx-coroutines-core` | 1.10.2 | 1.3.0 | `kotlinx.coroutines.flow.Flow` |
+
+We don't attempt to support pre-1.3 coroutines (there's no `Flow`) or pre-1.0
+grpc-kotlin-stub (the runtime classes hadn't been published yet). Within the
+ranges above, no symbol our generator emits requires a more recent library —
+the runtime is conservative on purpose.
 
 ## Modules
 
