@@ -14,9 +14,11 @@ import java.nio.file.Paths
  */
 class GeneratedCommentsTest {
     private val generatedSource: String by lazy {
+        // echo.proto has java_multiple_files=true, so we emit one .kt per
+        // service named after the service rather than the proto's outer class.
         val path = Paths.get(
             "build", "generated", "sources", "proto", "main",
-            "grpckt", "com", "example", "echo", "EchoProtoGrpcKt.kt",
+            "grpckt", "com", "example", "echo", "EchoServiceGrpcKt.kt",
         )
         check(Files.exists(path)) { "Generated source not found at $path" }
         Files.readString(path)

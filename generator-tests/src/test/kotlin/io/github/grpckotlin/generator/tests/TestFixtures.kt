@@ -130,6 +130,19 @@ object TestFixtures {
     }
 
     /**
+     * Same as [simpleRequestProto3] but with `java_multiple_files` cleared, so
+     * messages live nested in the outer Java class and our generator emits a
+     * single bundled `<OuterClass>GrpcKt.kt` rather than one file per service.
+     */
+    fun bundledRequestProto3(): CodeGeneratorRequest {
+        val base = simpleRequestProto3()
+        val file = base.getProtoFile(0)
+        val opts = file.options.toBuilder().clearJavaMultipleFiles().build()
+        val rewritten = file.toBuilder().setOptions(opts).build()
+        return base.toBuilder().clearProtoFile().addProtoFile(rewritten).build()
+    }
+
+    /**
      * Variant whose comments exercise the KDoc-rendering surface:
      *  - multi-line (preserved)
      *  - blank-line paragraph break

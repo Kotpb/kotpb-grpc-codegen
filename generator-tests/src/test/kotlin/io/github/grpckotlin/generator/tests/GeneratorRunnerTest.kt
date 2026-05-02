@@ -26,8 +26,16 @@ class GeneratorRunnerTest {
     }
 
     @Test
-    fun `emits one file per proto with services`() {
+    fun `multi-files mode emits one file per service named after the service`() {
         val response = GeneratorRunner.run(TestFixtures.simpleRequestProto3())
+
+        assertThat(response.fileList).hasSize(1)
+        assertThat(response.getFile(0).name).isEqualTo("com/example/echo/EchoServiceGrpcKt.kt")
+    }
+
+    @Test
+    fun `bundled mode emits a single file named after the proto's outer class`() {
+        val response = GeneratorRunner.run(TestFixtures.bundledRequestProto3())
 
         assertThat(response.fileList).hasSize(1)
         assertThat(response.getFile(0).name).isEqualTo("com/example/echo/EchoProtoGrpcKt.kt")
