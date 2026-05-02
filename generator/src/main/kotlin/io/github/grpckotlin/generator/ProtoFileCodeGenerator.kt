@@ -1,7 +1,6 @@
 package io.github.grpckotlin.generator
 
 import com.google.protobuf.DescriptorProtos.FileDescriptorProto
-import com.google.protobuf.DescriptorProtos.ServiceDescriptorProto
 import com.google.protobuf.compiler.PluginProtos.CodeGeneratorResponse
 import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.TypeSpec
@@ -24,7 +23,7 @@ object ProtoFileCodeGenerator {
         return if (DescriptorUtil.isJavaMultipleFiles(fileProto)) {
             fileProto.serviceList.mapIndexed { serviceIndex, service ->
                 buildPerServiceFile(
-                    fileProto, service, serviceIndex, kotlinPackage, config, typeIndex, comments,
+                    ServiceContext(fileProto, service, serviceIndex, config, typeIndex, comments),
                 )
             }
         } else {
@@ -32,19 +31,10 @@ object ProtoFileCodeGenerator {
         }
     }
 
-    private fun buildPerServiceFile(
-        fileProto: FileDescriptorProto,
-        service: ServiceDescriptorProto,
-        serviceIndex: Int,
-        kotlinPackage: String,
-        config: GeneratorConfig,
-        typeIndex: ProtoTypeIndex,
-        comments: ProtoComments,
-    ): CodeGeneratorResponse.File {
-        val ctx = ServiceContext(fileProto, service, serviceIndex, config, typeIndex, comments)
-        val fileSpec = newFileSpec(kotlinPackage, ctx.outerObjectName, fileProto.name)
+    private fun buildPerServiceFile(ctx: ServiceContext): CodeGeneratorResponse.File {
+        val fileSpec = newFileSpec(ctx.kotlinPackage, ctx.outerObjectName, ctx.file.name)
         fileSpec.addType(buildServiceObject(ctx))
-        return outputFile(kotlinPackage, ctx.outerObjectName, fileSpec.build().toString())
+        return outputFile(ctx.kotlinPackage, ctx.outerObjectName, fileSpec.build().toString())
     }
 
     private fun buildBundledFile(

@@ -1,7 +1,9 @@
+import io.gitlab.arturbosch.detekt.Detekt
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     id("org.jetbrains.kotlin.jvm")
+    id("io.gitlab.arturbosch.detekt")
 }
 
 kotlin {
@@ -31,4 +33,10 @@ tasks.withType<Test>().configureEach {
 tasks.withType<Jar>().configureEach {
     isReproducibleFileOrder = true
     isPreserveFileTimestamps = false
+}
+
+// Detekt: stock ruleset (no custom config), excluding KotlinPoet/protobuf-gradle
+// generated output that lives under build/.
+tasks.withType<Detekt>().configureEach {
+    exclude("**/build/**")
 }

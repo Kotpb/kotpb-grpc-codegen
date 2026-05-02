@@ -9,6 +9,7 @@ junit = "6.0.3"
 assertj = "3.27.3"
 protobuf-plugin = "0.10.0"
 graalvm-native = "1.1.0"
+detekt = "1.23.8"
 
 [libraries]
 kotlin-stdlib = { module = "org.jetbrains.kotlin:kotlin-stdlib", version.ref = "kotlin" }
@@ -41,3 +42,4 @@ assertj = { module = "org.assertj:assertj-core", version.ref = "assertj" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 protobuf = { id = "com.google.protobuf", version.ref = "protobuf-plugin" }
 graalvm-native = { id = "org.graalvm.buildtools.native", version.ref = "graalvm-native" }
+detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }

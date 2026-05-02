@@ -40,55 +40,12 @@ object TestFixtures {
     }
 
     fun simpleRequestProto3(): CodeGeneratorRequest {
-        val echoRequest = DescriptorProto.newBuilder()
-            .setName("EchoRequest")
-            .addField(
-                FieldDescriptorProto.newBuilder()
-                    .setName("message").setNumber(1)
-                    .setType(FieldDescriptorProto.Type.TYPE_STRING)
-                    .setLabel(FieldDescriptorProto.Label.LABEL_OPTIONAL)
-            )
-            .build()
-        val echoResponse = DescriptorProto.newBuilder()
-            .setName("EchoResponse")
-            .addField(
-                FieldDescriptorProto.newBuilder()
-                    .setName("message").setNumber(1)
-                    .setType(FieldDescriptorProto.Type.TYPE_STRING)
-                    .setLabel(FieldDescriptorProto.Label.LABEL_OPTIONAL)
-            )
-            .build()
-
         val service = ServiceDescriptorProto.newBuilder()
             .setName("EchoService")
-            .addMethod(
-                MethodDescriptorProto.newBuilder()
-                    .setName("Unary")
-                    .setInputType(".test.echo.EchoRequest")
-                    .setOutputType(".test.echo.EchoResponse")
-            )
-            .addMethod(
-                MethodDescriptorProto.newBuilder()
-                    .setName("ServerStream")
-                    .setInputType(".test.echo.EchoRequest")
-                    .setOutputType(".test.echo.EchoResponse")
-                    .setServerStreaming(true)
-            )
-            .addMethod(
-                MethodDescriptorProto.newBuilder()
-                    .setName("ClientStream")
-                    .setInputType(".test.echo.EchoRequest")
-                    .setOutputType(".test.echo.EchoResponse")
-                    .setClientStreaming(true)
-            )
-            .addMethod(
-                MethodDescriptorProto.newBuilder()
-                    .setName("BidiStream")
-                    .setInputType(".test.echo.EchoRequest")
-                    .setOutputType(".test.echo.EchoResponse")
-                    .setClientStreaming(true)
-                    .setServerStreaming(true)
-            )
+            .addMethod(echoMethod("Unary"))
+            .addMethod(echoMethod("ServerStream", serverStreaming = true))
+            .addMethod(echoMethod("ClientStream", clientStreaming = true))
+            .addMethod(echoMethod("BidiStream", clientStreaming = true, serverStreaming = true))
             .build()
 
         val file = FileDescriptorProto.newBuilder()
@@ -101,8 +58,8 @@ object TestFixtures {
                     .setJavaOuterClassname("EchoProto")
                     .setJavaMultipleFiles(true)
             )
-            .addMessageType(echoRequest)
-            .addMessageType(echoResponse)
+            .addMessageType(stringMessage("EchoRequest"))
+            .addMessageType(stringMessage("EchoResponse"))
             .addService(service)
             .build()
 
@@ -111,6 +68,28 @@ object TestFixtures {
             .addProtoFile(file)
             .build()
     }
+
+    private fun stringMessage(name: String): DescriptorProto = DescriptorProto.newBuilder()
+        .setName(name)
+        .addField(
+            FieldDescriptorProto.newBuilder()
+                .setName("message").setNumber(1)
+                .setType(FieldDescriptorProto.Type.TYPE_STRING)
+                .setLabel(FieldDescriptorProto.Label.LABEL_OPTIONAL)
+        )
+        .build()
+
+    private fun echoMethod(
+        name: String,
+        clientStreaming: Boolean = false,
+        serverStreaming: Boolean = false,
+    ): MethodDescriptorProto = MethodDescriptorProto.newBuilder()
+        .setName(name)
+        .setInputType(".test.echo.EchoRequest")
+        .setOutputType(".test.echo.EchoResponse")
+        .setClientStreaming(clientStreaming)
+        .setServerStreaming(serverStreaming)
+        .build()
 
     /**
      * Same as [simpleRequestProto3] but the file's `SourceCodeInfo` carries

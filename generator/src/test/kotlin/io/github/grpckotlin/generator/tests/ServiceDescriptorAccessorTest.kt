@@ -17,7 +17,8 @@ class ServiceDescriptorAccessorTest {
         // (stub + impl base). Both delegate to the outer GrpcKt object so the
         // descriptor identity stays singular.
         val accessor = Regex(
-            """@JvmStatic\s+public val serviceDescriptor: GrpcServiceDescriptor\s+get\(\) = EchoServiceGrpcKt\.serviceDescriptor"""
+            """@JvmStatic\s+public val serviceDescriptor: GrpcServiceDescriptor\s+""" +
+                """get\(\) = EchoServiceGrpcKt\.serviceDescriptor"""
         )
         assertThat(accessor.findAll(content).count()).isEqualTo(2)
     }

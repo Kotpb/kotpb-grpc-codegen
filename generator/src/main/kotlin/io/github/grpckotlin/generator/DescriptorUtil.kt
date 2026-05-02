@@ -29,8 +29,7 @@ object DescriptorUtil {
         }
         val base = file.name.substringAfterLast('/').substringBeforeLast('.')
         val camel = toCamelCase(base)
-        if (hasMessageOrEnumOrServiceNamed(file, camel)) return "${camel}OuterClass"
-        return camel
+        return if (hasMessageOrEnumOrServiceNamed(file, camel)) "${camel}OuterClass" else camel
     }
 
     fun outerKotlinClassNameForGrpcKt(file: FileDescriptorProto): String =
@@ -40,10 +39,7 @@ object DescriptorUtil {
         val opts = file.options
         if (opts.hasJavaMultipleFiles()) return opts.javaMultipleFiles
         // Editions 2024+ remove java_multiple_files and default to multi-files behavior.
-        if (file.syntax == "editions" && file.edition.number >= Edition.EDITION_2024.number) {
-            return true
-        }
-        return false
+        return file.syntax == "editions" && file.edition.number >= Edition.EDITION_2024.number
     }
 
     fun classNameForProtoType(
@@ -58,10 +54,9 @@ object DescriptorUtil {
         val withinPkg = if (owningProtoPkg.isNotEmpty()) sanitized.removePrefix("$owningProtoPkg.") else sanitized
         val parts = withinPkg.split('.')
         return if (isJavaMultipleFiles(owningFile)) {
-            ClassName(owningJavaPkg, parts.first(), *parts.drop(1).toTypedArray())
+            ClassName(owningJavaPkg, parts)
         } else {
-            val outer = resolveJavaOuterClassName(owningFile)
-            ClassName(owningJavaPkg, outer, *parts.toTypedArray())
+            ClassName(owningJavaPkg, listOf(resolveJavaOuterClassName(owningFile)) + parts)
         }
     }
 
