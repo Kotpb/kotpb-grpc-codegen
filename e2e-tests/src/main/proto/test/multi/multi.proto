@@ -1,0 +1,30 @@
+// Fixture for "multiple services per .proto file".
+//
+// Both services share the same package, the same outer Java class
+// (MultiProto), and the same shared message types. Our ProtoFileCodeGenerator
+// iterates fileProto.serviceList and emits one `<Service>GrpcKt` outer object
+// per service into a single MultiProtoGrpcKt.kt source file.
+
+syntax = "proto3";
+
+package test.multi;
+
+option java_package = "com.example.multi";
+option java_outer_classname = "MultiProto";
+option java_multiple_files = true;
+
+message Ping {
+  string from = 1;
+}
+
+message Pong {
+  string from = 1;
+}
+
+service PingService {
+  rpc Send(Ping) returns (Pong);
+}
+
+service PongService {
+  rpc Send(Pong) returns (Ping);
+}
