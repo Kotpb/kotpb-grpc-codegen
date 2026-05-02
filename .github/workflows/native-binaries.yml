@@ -22,11 +22,17 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # Static-link against musl on Linux (both arches) so the binary
+          # runs on every glibc version and inside minimal containers
+          # (alpine, distroless).
           - os: ubuntu-latest
             target: linux-x86_64
             binary: protoc-gen-grpc-kotlin
-            # Static-link against musl on Linux so the binary works on every
-            # glibc version and inside minimal containers (alpine, distroless).
+            musl: true
+            extra-build-args: '--static --libc=musl'
+          - os: ubuntu-24.04-arm
+            target: linux-aarch64
+            binary: protoc-gen-grpc-kotlin
             musl: true
             extra-build-args: '--static --libc=musl'
           - os: macos-13
@@ -71,6 +77,44 @@ jobs:
           else
             ./gradlew :plugin:nativeCompile --no-daemon
           fi
+
+      # Smoke test: run the produced binary as a real protoc plugin against
+      # an existing fixture and check the generated source for key symbols.
+      # Runs on every platform / arch in the matrix.
+      - name: Set up protoc
+        uses: arduino/setup-protoc@v3
+        with:
+          version: '34.x'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Smoke-test the binary as a protoc plugin
+        shell: bash
+        run: |
+          set -euo pipefail
+          binary="$PWD/plugin/build/native/nativeCompile/${{ matrix.binary }}"
+          out="$PWD/smoke-out"
+          rm -rf "$out" && mkdir -p "$out"
+
+          fixture_dir="e2e-tests/src/main/proto/proto3_multifiles"
+          fixture="proto3_multifiles.proto"
+
+          protoc \
+            --plugin=protoc-gen-grpc-kotlin="$binary" \
+            --grpc-kotlin_out="$out" \
+            -I "$fixture_dir" \
+            "$fixture"
+
+          generated="$out/com/example/proto3_multifiles/EchoServiceGrpcKt.kt"
+          test -f "$generated" || { echo "FAIL: $generated not produced"; exit 1; }
+
+          # Spot-check the symbols our generator should always produce.
+          grep -q 'public class EchoServiceCoroutineStub'        "$generated"
+          grep -q 'public abstract class EchoServiceCoroutineImplBase' "$generated"
+          grep -q 'SERVICE_NAME: String = "proto3_multifiles.EchoService"' "$generated"
+          grep -q 'public suspend fun unary'                     "$generated"
+          grep -q 'public fun bidiStream'                        "$generated"
+
+          echo "Smoke test passed on ${{ matrix.target }}."
 
       - name: Stage artifact
         shell: bash

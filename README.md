@@ -63,16 +63,32 @@ toolchain resolver — no separate install required.
 ### Cross-platform binaries via CI
 
 `.github/workflows/native-binaries.yml` runs on every push of a `v*` tag
-and builds binaries for **Linux x86_64**, **macOS x86_64**, **macOS
-aarch64**, and **Windows x86_64**, attaching them to the corresponding
-GitHub Release. The same workflow can be triggered manually from the
-Actions tab to produce build artifacts without cutting a release.
+and builds binaries for five targets:
 
-The Linux binary is statically linked against musl (`--static
---libc=musl`), so it runs without glibc version surprises and works
-inside minimal containers (alpine, distroless). macOS and Windows
-binaries are dynamically linked against the platform's system C
-library — that's the only practical option there.
+| Target | Runner | Linkage |
+|---|---|---|
+| `linux-x86_64`   | `ubuntu-latest`     | static (musl) |
+| `linux-aarch64`  | `ubuntu-24.04-arm`  | static (musl) |
+| `macos-x86_64`   | `macos-13`          | dynamic (libSystem) |
+| `macos-aarch64`  | `macos-latest`      | dynamic (libSystem) |
+| `windows-x86_64` | `windows-latest`    | dynamic (msvcrt) |
+
+All five are attached to the matching GitHub Release on tag push. The
+same workflow can be triggered manually from the Actions tab to produce
+build artifacts without cutting a release.
+
+Both Linux binaries are statically linked against musl (`--static
+--libc=musl`), so they run without glibc version surprises and work
+inside minimal containers (alpine, distroless). macOS and Windows are
+dynamically linked against the platform's system C library — that's the
+only practical option there.
+
+Each produced binary is **smoke-tested in CI** before upload: protoc is
+installed on the runner, our binary is invoked as a `--plugin=`, and
+the output is checked for the expected symbols (`EchoServiceCoroutineStub`,
+`EchoServiceCoroutineImplBase`, the canonical `SERVICE_NAME`, etc.). A
+binary that compiled but doesn't actually work as a protoc plugin
+fails the workflow and is never published.
 
 ### Build-flag rationale
 
