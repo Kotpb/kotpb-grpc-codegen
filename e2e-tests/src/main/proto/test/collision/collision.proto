@@ -1,0 +1,35 @@
+// Regression fixture for grpc/grpc-kotlin#467: name-collision audit.
+//
+// protoc disallows a service and a message sharing the same name in the
+// same scope, so the service is named CollisionService. Everything else
+// shares the identifier `collision` / `Collision`:
+//   - proto package         = "collision"
+//   - kotlin output package = "collision"      (same as proto package)
+//   - message               = "Collision"
+//   - field                 = "collision"      (same as package)
+//   - method                = "Collision"      (same as message)
+//
+// If the generator ever emits an under-qualified reference, KotlinPoet
+// won't resolve the right symbol and either the file won't compile or the
+// RPC won't actually wire up at runtime. The companion test exercises
+// both signals.
+
+syntax = "proto3";
+
+package collision;
+
+option java_package = "collision";
+option java_outer_classname = "CollisionProto";
+option java_multiple_files = true;
+
+message Collision {
+  string collision = 1;
+}
+
+service CollisionService {
+  // Absolute qualifier on the request/response types — when method name
+  // matches the message name protoc's relative resolution gets confused,
+  // so we route through the fully-qualified name to keep this fixture
+  // valid while still exercising every codegen collision path.
+  rpc Collision(.collision.Collision) returns (.collision.Collision);
+}
