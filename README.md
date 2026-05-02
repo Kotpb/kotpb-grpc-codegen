@@ -83,12 +83,16 @@ inside minimal containers (alpine, distroless). macOS and Windows are
 dynamically linked against the platform's system C library — that's the
 only practical option there.
 
-Each produced binary is **smoke-tested in CI** before upload: protoc is
-installed on the runner, our binary is invoked as a `--plugin=`, and
-the output is checked for the expected symbols (`EchoServiceCoroutineStub`,
-`EchoServiceCoroutineImplBase`, the canonical `SERVICE_NAME`, etc.). A
-binary that compiled but doesn't actually work as a protoc plugin
-fails the workflow and is never published.
+Each produced binary is **smoke-tested in CI** before upload, by
+generating the same `.proto` through both the native binary and the
+JVM-mode plugin and asserting **byte-identical output**. KotlinPoet's
+emission is deterministic (no timestamps, stable descriptor iteration),
+so any divergence between the native and JVM outputs is a genuine
+native-image regression — caused by reflection, class initialization,
+or resource-lookup behavior that survived `--strict-image-heap` but
+still misbehaves at runtime. A binary that compiled but produces
+different output than the JVM build fails the workflow and is never
+published.
 
 ### Build-flag rationale
 

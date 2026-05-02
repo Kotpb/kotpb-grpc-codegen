@@ -68,53 +68,75 @@ jobs:
         if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1
 
-      - name: Build native binary
+      - name: Build native binary and JVM distribution
         shell: bash
         run: |
           extra="${{ matrix.extra-build-args }}"
+          # installDist gives us the JVM-mode plugin script we'll diff
+          # against; nativeCompile gives us the native binary under test.
           if [[ -n "$extra" ]]; then
-            ./gradlew :plugin:nativeCompile --no-daemon -PextraNativeBuildArgs="$extra"
+            ./gradlew :plugin:nativeCompile :plugin:installDist --no-daemon \
+              -PextraNativeBuildArgs="$extra"
           else
-            ./gradlew :plugin:nativeCompile --no-daemon
+            ./gradlew :plugin:nativeCompile :plugin:installDist --no-daemon
           fi
 
-      # Smoke test: run the produced binary as a real protoc plugin against
-      # an existing fixture and check the generated source for key symbols.
-      # Runs on every platform / arch in the matrix.
       - name: Set up protoc
         uses: arduino/setup-protoc@v3
         with:
           version: '34.x'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Smoke-test the binary as a protoc plugin
+      # Smoke test: invoke the produced native binary as a real protoc
+      # plugin and verify its output is byte-identical to the JVM-mode
+      # plugin's output on the same input. Any divergence here means
+      # native-image broke something (reflection, class init, resource
+      # lookup, ...) -- and the only way to know is to compare against
+      # the trusted JVM build.
+      - name: Smoke-test native binary against JVM output
         shell: bash
         run: |
           set -euo pipefail
-          binary="$PWD/plugin/build/native/nativeCompile/${{ matrix.binary }}"
-          out="$PWD/smoke-out"
-          rm -rf "$out" && mkdir -p "$out"
+
+          native_binary="$PWD/plugin/build/native/nativeCompile/${{ matrix.binary }}"
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            jvm_script="$PWD/plugin/build/install/protoc-gen-grpc-kotlin/bin/protoc-gen-grpc-kotlin.bat"
+          else
+            jvm_script="$PWD/plugin/build/install/protoc-gen-grpc-kotlin/bin/protoc-gen-grpc-kotlin"
+          fi
+
+          native_out="$PWD/smoke-native"
+          jvm_out="$PWD/smoke-jvm"
+          rm -rf "$native_out" "$jvm_out"
+          mkdir -p "$native_out" "$jvm_out"
 
           fixture_dir="e2e-tests/src/main/proto/proto3_multifiles"
           fixture="proto3_multifiles.proto"
 
-          protoc \
-            --plugin=protoc-gen-grpc-kotlin="$binary" \
-            --grpc-kotlin_out="$out" \
-            -I "$fixture_dir" \
-            "$fixture"
+          # Run the same proto through both plugins.
+          protoc --plugin=protoc-gen-grpc-kotlin="$native_binary" \
+                 --grpc-kotlin_out="$native_out" \
+                 -I "$fixture_dir" "$fixture"
+          protoc --plugin=protoc-gen-grpc-kotlin="$jvm_script" \
+                 --grpc-kotlin_out="$jvm_out" \
+                 -I "$fixture_dir" "$fixture"
 
-          generated="$out/com/example/proto3_multifiles/EchoServiceGrpcKt.kt"
-          test -f "$generated" || { echo "FAIL: $generated not produced"; exit 1; }
+          rel="com/example/proto3_multifiles/EchoServiceGrpcKt.kt"
+          native_file="$native_out/$rel"
+          jvm_file="$jvm_out/$rel"
 
-          # Spot-check the symbols our generator should always produce.
-          grep -q 'public class EchoServiceCoroutineStub'        "$generated"
-          grep -q 'public abstract class EchoServiceCoroutineImplBase' "$generated"
-          grep -q 'SERVICE_NAME: String = "proto3_multifiles.EchoService"' "$generated"
-          grep -q 'public suspend fun unary'                     "$generated"
-          grep -q 'public fun bidiStream'                        "$generated"
+          test -f "$native_file" || { echo "FAIL: native binary produced no $rel"; exit 1; }
+          test -f "$jvm_file"    || { echo "FAIL: JVM dist produced no $rel";    exit 1; }
 
-          echo "Smoke test passed on ${{ matrix.target }}."
+          # Byte-for-byte comparison. KotlinPoet output is deterministic
+          # (no timestamps, stable iteration order), so any difference
+          # here is a real regression.
+          if ! diff -u "$jvm_file" "$native_file"; then
+            echo "FAIL: native binary output diverges from JVM output on ${{ matrix.target }}"
+            exit 1
+          fi
+
+          echo "Smoke test passed on ${{ matrix.target }}: native output is identical to JVM output."
 
       - name: Stage artifact
         shell: bash
