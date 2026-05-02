@@ -12,6 +12,33 @@ import com.google.protobuf.DescriptorProtos.SourceCodeInfo
 import com.google.protobuf.compiler.PluginProtos.CodeGeneratorRequest
 
 object TestFixtures {
+    /**
+     * Build a `CodeGeneratorRequest` from [base] but with the first proto file
+     * rewritten by [transform], optionally renamed via [withFileName] (which
+     * also updates `fileToGenerate` to keep the request valid).
+     *
+     * Saves callers from the verbose
+     * `base.toBuilder().apply { val f = getProtoFile(0); ... clearProtoFile()
+     * addProtoFile(...).build()` pattern.
+     */
+    fun rewriteFile(
+        base: CodeGeneratorRequest,
+        withFileName: String? = null,
+        transform: FileDescriptorProto.Builder.() -> Unit,
+    ): CodeGeneratorRequest {
+        val builder = base.getProtoFile(0).toBuilder().apply(transform)
+        withFileName?.let { builder.name = it }
+        val rewritten = builder.build()
+        return base.toBuilder().apply {
+            clearProtoFile()
+            addProtoFile(rewritten)
+            withFileName?.let {
+                clearFileToGenerate()
+                addFileToGenerate(it)
+            }
+        }.build()
+    }
+
     fun simpleRequestProto3(): CodeGeneratorRequest {
         val echoRequest = DescriptorProto.newBuilder()
             .setName("EchoRequest")

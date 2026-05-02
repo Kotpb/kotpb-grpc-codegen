@@ -9,12 +9,6 @@ internal object Annotations {
             .addMember("%S", message)
             .build()
 
-    fun suppress(vararg names: String): AnnotationSpec {
-        val builder = AnnotationSpec.builder(Suppress::class.asClassName())
-        for (name in names) builder.addMember("%S", name)
-        return builder.build()
-    }
-
     const val DEPRECATED_SERVICE_MESSAGE = "This service is deprecated."
     const val DEPRECATED_METHOD_MESSAGE = "This RPC is deprecated."
 }

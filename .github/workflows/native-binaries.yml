@@ -79,14 +79,11 @@ jobs:
 
       - name: Build native binary and JVM distribution
         shell: bash
+        # extra-build-args may be empty; the Gradle config filters blanks, so
+        # passing an empty -P value is a no-op and we don't need a conditional.
         run: |
-          extra="${{ matrix.extra-build-args }}"
-          if [[ -n "$extra" ]]; then
-            ./gradlew :plugin:nativeCompile :plugin:installDist --no-daemon \
-              -PextraNativeBuildArgs="$extra"
-          else
-            ./gradlew :plugin:nativeCompile :plugin:installDist --no-daemon
-          fi
+          ./gradlew :plugin:nativeCompile :plugin:installDist --no-daemon \
+            -PextraNativeBuildArgs="${{ matrix.extra-build-args }}"
 
       - name: Set up protoc
         uses: arduino/setup-protoc@v3

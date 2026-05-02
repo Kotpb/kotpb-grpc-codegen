@@ -24,14 +24,14 @@ class ServiceContext(
     val outerObjectClassName: ClassName = ClassName(kotlinPackage, outerObjectName)
 
     val fileDescriptorSupplierClassName: ClassName =
-        ClassName(kotlinPackage, outerObjectName, "${service.name}FileDescriptorSupplier")
+        outerObjectClassName.nestedClass("${service.name}FileDescriptorSupplier")
     val methodDescriptorSupplierClassName: ClassName =
-        ClassName(kotlinPackage, outerObjectName, "${service.name}MethodDescriptorSupplier")
+        outerObjectClassName.nestedClass("${service.name}MethodDescriptorSupplier")
 
     val coroutineStubClassName: ClassName =
-        ClassName(kotlinPackage, outerObjectName, "${service.name}CoroutineStub")
+        outerObjectClassName.nestedClass("${service.name}CoroutineStub")
     val coroutineImplBaseClassName: ClassName =
-        ClassName(kotlinPackage, outerObjectName, "${service.name}CoroutineImplBase")
+        outerObjectClassName.nestedClass("${service.name}CoroutineImplBase")
 
     private val classNameCache = mutableMapOf<String, ClassName>()
 

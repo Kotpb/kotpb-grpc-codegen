@@ -127,6 +127,10 @@ publishing {
 
             val binaryPath = project.findProperty("nativeBinaryFile") as? String
             val classifier = project.findProperty("nativeBinaryClassifier") as? String
+            check((binaryPath == null) == (classifier == null)) {
+                "Both -PnativeBinaryFile and -PnativeBinaryClassifier must be set " +
+                    "together (or neither)."
+            }
             if (binaryPath != null && classifier != null) {
                 artifact(file(binaryPath)) {
                     this.classifier = classifier

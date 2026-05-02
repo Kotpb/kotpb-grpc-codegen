@@ -1,11 +1,11 @@
 package io.github.grpckotlin.generator
 
 import com.google.protobuf.DescriptorProtos.MethodDescriptorProto
+import com.squareup.kotlinpoet.AnnotationSpec
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.KModifier
 import com.squareup.kotlinpoet.ParameterSpec
-import com.squareup.kotlinpoet.PropertySpec
 import com.squareup.kotlinpoet.TypeSpec
 
 object ServerBaseGenerator {
@@ -39,20 +39,6 @@ object ServerBaseGenerator {
 
         builder.addType(classBuilder.build())
     }
-
-    private fun serviceDescriptorCompanion(ctx: ServiceContext): TypeSpec =
-        TypeSpec.companionObjectBuilder()
-            .addProperty(
-                PropertySpec.builder("serviceDescriptor", TypeNames.ServiceDescriptor)
-                    .addAnnotation(JvmStatic::class)
-                    .getter(
-                        FunSpec.getterBuilder()
-                            .addStatement("return %T.serviceDescriptor", ctx.outerObjectClassName)
-                            .build()
-                    )
-                    .build()
-            )
-            .build()
 
     private fun buildOpenServerMethod(
         ctx: ServiceContext,
@@ -107,7 +93,11 @@ object ServerBaseGenerator {
         // every method descriptor (which is also marked deprecated when its
         // method is). Suppress so this internal plumbing compiles cleanly.
         if (ctx.service.options.deprecated || ctx.service.methodList.any { it.options.deprecated }) {
-            builder.addAnnotation(Annotations.suppress("DEPRECATION"))
+            builder.addAnnotation(
+                AnnotationSpec.builder(Suppress::class)
+                    .addMember("%S", "DEPRECATION")
+                    .build()
+            )
         }
 
         return builder.build()

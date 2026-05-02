@@ -69,27 +69,12 @@ specific bytecode floor — no method handles, records, sealed-permits,
 `invokedynamic`-only features, etc. So **the codegen itself imposes no
 JVM minimum.**
 
-The practical floor comes from the libraries the consumer pulls in.
-At the versions we test against, every dep ships Java 8 bytecode
-(class-file major version 52), so the resulting effective floor is
-**Java 8**:
-
-| Artifact | Class major | Source of pin |
-|---|---|---|
-| `io.grpc:grpc-api:1.81.0` | 52 (Java 8) | grpc-java README: "supports Java 8 and later" |
-| `io.grpc:grpc-kotlin-stub:1.4.3` | 52 (Java 8) | Gradle module metadata: `org.gradle.jvm.version: 8` |
-| `com.google.protobuf:protobuf-java:4.34.1` | 52 (Java 8) | Manifest: `Require-Capability: osgi.ee … 1.8` |
-| `org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.10.2` | 52 (Java 8) | local jar inspection — `cafe babe 0000 0034` |
-
-The consumer's `jvmTarget` for *compiling* the generated Kotlin source
-is their own choice; we don't constrain it.
-
 ### Kotlin
 
 The generator emits code compatible with Kotlin 1.0–1.1 language features (`suspend`,
 `companion object`, `@JvmStatic`, `by lazy`, default-value parameters,
-top-level `object`, single-interface class delegation). 
-Except for streaming services that require `kotlinx.coroutines.flow.Flow` in that case 
+top-level `object`, single-interface class delegation).
+Except for streaming services that require `kotlinx.coroutines.flow.Flow` in that case
 **language-level floor from the generated code is Kotlin 1.3** (when `Flow` was introduced).
 
 ### Library versions
@@ -97,14 +82,14 @@ Except for streaming services that require `kotlinx.coroutines.flow.Flow` in tha
 What versions we test against in `:e2e-tests`, plus the minimum versions
 that should still resolve every symbol the generated code imports.
 
-| Artifact | Tested with | Compatible since | Earliest symbol our code imports |
-|---|---|---|---|
-| `io.grpc:grpc-api` | 1.81.0 | 1.26.0 | `Channel`, `CallOptions`, `MethodDescriptor`, … (predate the API split) |
-| `io.grpc:grpc-protobuf` | 1.81.0 | 1.0 | `ProtoUtils.marshaller`, `ProtoFileDescriptorSupplier` |
-| `io.grpc:grpc-protobuf-lite` *(only when `lite=true`)* | 1.81.0 | 1.0 | `ProtoLiteUtils.marshaller` |
-| `io.grpc:grpc-kotlin-stub` | 1.4.3 | 1.0.0 (2020) | `AbstractCoroutineStub`, `AbstractCoroutineServerImpl`, `ClientCalls`, `ServerCalls` |
-| `com.google.protobuf:protobuf-java` | 4.34.1 | 3.x | `Descriptors.FileDescriptor`, `<Message>.getDefaultInstance()` |
-| `org.jetbrains.kotlinx:kotlinx-coroutines-core` | 1.10.2 | 1.3.0 | `kotlinx.coroutines.flow.Flow` |
+| Artifact                                               | Tested with | Compatible since | Earliest symbol our code imports                                                     |
+| ------------------------------------------------------ | ----------- | ---------------- | ------------------------------------------------------------------------------------ |
+| `io.grpc:grpc-api`                                     | 1.81.0      | 1.26.0           | `Channel`, `CallOptions`, `MethodDescriptor`, … (predate the API split)              |
+| `io.grpc:grpc-protobuf`                                | 1.81.0      | 1.0              | `ProtoUtils.marshaller`, `ProtoFileDescriptorSupplier`                               |
+| `io.grpc:grpc-protobuf-lite` _(only when `lite=true`)_ | 1.81.0      | 1.0              | `ProtoLiteUtils.marshaller`                                                          |
+| `io.grpc:grpc-kotlin-stub`                             | 1.4.3       | 1.0.0 (2020)     | `AbstractCoroutineStub`, `AbstractCoroutineServerImpl`, `ClientCalls`, `ServerCalls` |
+| `com.google.protobuf:protobuf-java`                    | 4.34.1      | 3.x              | `Descriptors.FileDescriptor`, `<Message>.getDefaultInstance()`                       |
+| `org.jetbrains.kotlinx:kotlinx-coroutines-core`        | 1.10.2      | 1.3.0            | `kotlinx.coroutines.flow.Flow`                                                       |
 
 ## Modules
 
@@ -144,18 +129,18 @@ The native binary lands at
 Pass via protoc's `--grpc-kotlin_opt=...` flag (comma-separated to combine,
 e.g. `--grpc-kotlin_opt=comments,java_package=com.acme`).
 
-| Option | Effect |
-|---|---|
-| `lite` (or `lite=true`) | Emit `ProtoLiteUtils.marshaller(...)` instead of `ProtoUtils.marshaller(...)`. See note below. |
+| Option                          | Effect                                                                                                                                                                                                |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `lite` (or `lite=true`)         | Emit `ProtoLiteUtils.marshaller(...)` instead of `ProtoUtils.marshaller(...)`. See note below.                                                                                                        |
 | `comments` (or `comments=true`) | Preserve `.proto` source leading comments as KDoc on the outer object, the stub class, the impl base, the `MethodDescriptor` properties, and every per-method client/server function. Off by default. |
-| `java_package=<pkg>` | Override the Kotlin output package. Otherwise resolved from the file's `option java_package`, falling back to the proto `package`. |
+| `java_package=<pkg>`            | Override the Kotlin output package. Otherwise resolved from the file's `option java_package`, falling back to the proto `package`.                                                                    |
 
 ### When to use `lite`
 
 This is a small but real distinction. At runtime, `ProtoUtils.marshaller(T)` in
-`io.grpc:grpc-protobuf` *delegates straight to* `ProtoLiteUtils.marshaller(T)` in
+`io.grpc:grpc-protobuf` _delegates straight to_ `ProtoLiteUtils.marshaller(T)` in
 `io.grpc:grpc-protobuf-lite` — same marshaller object, only the type bound and
-the *import* differ:
+the _import_ differ:
 
 - Default (`lite` unset): generated code imports
   `io.grpc.protobuf.ProtoUtils`, which requires `T : com.google.protobuf.Message`
@@ -174,13 +159,13 @@ default is correct.
 
 Standard protobuf file/service/method options that affect codegen:
 
-| Option | Effect |
-|---|---|
-| `option java_package = "...";` | Used as the Kotlin output package. Plugin option `--grpc-kotlin_opt=java_package=...` overrides it; otherwise the proto `package` is the fallback. |
-| `option java_outer_classname = "...";` | The Java class containing `getDescriptor()` for the proto file. Our descriptor suppliers reference it. If unset, derived from the filename (`my_proto.proto` → `MyProto`); if that derivation collides with a top-level message/enum/service, `OuterClass` is appended (matching `protoc-gen-java`'s rule exactly). |
-| `option java_multiple_files = true;` | Emit one Kotlin file per service: `<Service>GrpcKt.kt`. Otherwise every service in the `.proto` is bundled into `<OuterClass>GrpcKt.kt`. **Removed in editions 2024**, where multi-file output is the default. |
-| `option deprecated = true;` (on a `service`) | Emits `@Deprecated("This service is deprecated.")` on `<Service>CoroutineStub` and `<Service>CoroutineImplBase`. |
-| `option deprecated = true;` (on an `rpc`) | Emits `@Deprecated("This RPC is deprecated.")` on the client stub fn, the server impl-base fn, and the `MethodDescriptor` property. `bindService()` gets `@Suppress("DEPRECATION")` because it must reference deprecated methods internally. |
+| Option                                       | Effect                                                                                                                                                                                                                                                                                                              |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `option java_package = "...";`               | Used as the Kotlin output package. Plugin option `--grpc-kotlin_opt=java_package=...` overrides it; otherwise the proto `package` is the fallback.                                                                                                                                                                  |
+| `option java_outer_classname = "...";`       | The Java class containing `getDescriptor()` for the proto file. Our descriptor suppliers reference it. If unset, derived from the filename (`my_proto.proto` → `MyProto`); if that derivation collides with a top-level message/enum/service, `OuterClass` is appended (matching `protoc-gen-java`'s rule exactly). |
+| `option java_multiple_files = true;`         | Emit one Kotlin file per service: `<Service>GrpcKt.kt`. Otherwise every service in the `.proto` is bundled into `<OuterClass>GrpcKt.kt`. **Removed in editions 2024**, where multi-file output is the default.                                                                                                      |
+| `option deprecated = true;` (on a `service`) | Emits `@Deprecated("This service is deprecated.")` on `<Service>CoroutineStub` and `<Service>CoroutineImplBase`.                                                                                                                                                                                                    |
+| `option deprecated = true;` (on an `rpc`)    | Emits `@Deprecated("This RPC is deprecated.")` on the client stub fn, the server impl-base fn, and the `MethodDescriptor` property. `bindService()` gets `@Suppress("DEPRECATION")` because it must reference deprecated methods internally.                                                                        |
 
 What the plugin does **not** consume from `.proto`:
 
@@ -284,11 +269,11 @@ GraalVM JDK 21 itself is downloaded automatically by Gradle's foojay
 toolchain resolver — no separate install required. Per-platform OS toolchain
 prerequisites still apply:
 
-| Platform | Needs |
-|---|---|
-| Linux   | `gcc`, `glibc` headers (preinstalled on most distros) |
-| macOS   | Xcode command-line tools (`xcode-select --install`) |
-| Windows | Visual Studio 2022 with the C++ build tools, or run inside the *x64 Native Tools Command Prompt* |
+| Platform | Needs                                                                                            |
+| -------- | ------------------------------------------------------------------------------------------------ |
+| Linux    | `gcc`, `glibc` headers (preinstalled on most distros)                                            |
+| macOS    | Xcode command-line tools (`xcode-select --install`)                                              |
+| Windows  | Visual Studio 2022 with the C++ build tools, or run inside the _x64 Native Tools Command Prompt_ |
 
 ### Cross-platform binaries via CI
 
@@ -296,13 +281,13 @@ prerequisites still apply:
 builds binaries for five targets, attaching them to the matching GitHub
 Release. The same workflow can be triggered manually from the Actions tab.
 
-| Classifier | Runner | Linkage |
-|---|---|---|
-| `linux-x86_64`   | `ubuntu-latest`     | static (musl) |
-| `linux-aarch_64` | `ubuntu-24.04-arm`  | static (musl) |
-| `osx-x86_64`     | `macos-13`          | dynamic (libSystem) |
-| `osx-aarch_64`   | `macos-latest`      | dynamic (libSystem) |
-| `windows-x86_64` | `windows-latest`    | dynamic (msvcrt) |
+| Classifier       | Runner             | Linkage             |
+| ---------------- | ------------------ | ------------------- |
+| `linux-x86_64`   | `ubuntu-latest`    | static (musl)       |
+| `linux-aarch_64` | `ubuntu-24.04-arm` | static (musl)       |
+| `osx-x86_64`     | `macos-13`         | dynamic (libSystem) |
+| `osx-aarch_64`   | `macos-latest`     | dynamic (libSystem) |
+| `windows-x86_64` | `windows-latest`   | dynamic (msvcrt)    |
 
 Both Linux binaries are statically linked against musl (`--static
 --libc=musl`), so they run without glibc version surprises and work inside
@@ -320,15 +305,15 @@ output than the JVM build fails the workflow and is never published.
 
 ### Build-flag rationale
 
-| Flag | Why |
-|---|---|
-| `--no-fallback` | Fail loudly instead of silently producing a slow JIT-fallback binary if reflection metadata is missing. |
-| `--strict-image-heap` | Future-default class-init mode; surfaces accidental run-time heap pollution at build time. |
+| Flag                                        | Why                                                                                                                                                                                           |
+| ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--no-fallback`                             | Fail loudly instead of silently producing a slow JIT-fallback binary if reflection metadata is missing.                                                                                       |
+| `--strict-image-heap`                       | Future-default class-init mode; surfaces accidental run-time heap pollution at build time.                                                                                                    |
 | `--link-at-build-time=io.github.grpckotlin` | Forces our own classes to fully link at build time; tiny startup win and catches missing-class errors at build. Scoped to our group so library deps still init at runtime where they need to. |
-| `-O3` | Speed-of-execution tier; the plugin runs once per protoc build so runtime savings compound. |
-| `-march=compatibility` | Broad CPU-arch compatibility (never `-march=native` since we ship the binary). |
-| `-R:MaxHeapSize=128m` | Cap at 128 MiB; the default is 80 % of physical RAM, wasteful for a one-shot CLI. |
-| `-H:+ReportExceptionStackTraces` | Better diagnostics if reflection-shaped issues surface. |
+| `-O3`                                       | Speed-of-execution tier; the plugin runs once per protoc build so runtime savings compound.                                                                                                   |
+| `-march=compatibility`                      | Broad CPU-arch compatibility (never `-march=native` since we ship the binary).                                                                                                                |
+| `-R:MaxHeapSize=128m`                       | Cap at 128 MiB; the default is 80 % of physical RAM, wasteful for a one-shot CLI.                                                                                                             |
+| `-H:+ReportExceptionStackTraces`            | Better diagnostics if reflection-shaped issues surface.                                                                                                                                       |
 
 ### Consuming the native binary as a protoc plugin
 
