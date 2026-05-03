@@ -9,7 +9,9 @@ object ServiceDescriptorGenerator {
             PropertySpec.builder("serviceDescriptor", TypeNames.ServiceDescriptor)
                 .delegateLazy {
                     addStatement("%T.newBuilder(SERVICE_NAME)", TypeNames.ServiceDescriptor)
-                    addStatement(".setSchemaDescriptor(%T)", ctx.fileDescriptorSupplierClassName)
+                    if (!ctx.config.lite) {
+                        addStatement(".setSchemaDescriptor(%T)", ctx.fileDescriptorSupplierClassName)
+                    }
                     for (method in ctx.service.methodList) {
                         addStatement(".addMethod(%N)", ctx.getMethodPropertyName(method.name))
                     }

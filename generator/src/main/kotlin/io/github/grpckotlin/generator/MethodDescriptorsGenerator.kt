@@ -46,7 +46,9 @@ object MethodDescriptorsGenerator {
                     ".setResponseMarshaller(%T.marshaller(%T.getDefaultInstance()))",
                     marshaller, responseType,
                 )
-                addStatement(".setSchemaDescriptor(%T(%S))", ctx.methodDescriptorSupplierClassName, method.name)
+                if (!ctx.config.lite) {
+                    addStatement(".setSchemaDescriptor(%T(%S))", ctx.methodDescriptorSupplierClassName, method.name)
+                }
                 addStatement(".build()")
             }
 

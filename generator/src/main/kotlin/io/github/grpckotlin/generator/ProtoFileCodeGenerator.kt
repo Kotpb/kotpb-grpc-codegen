@@ -57,7 +57,13 @@ object ProtoFileCodeGenerator {
         val outerObject = TypeSpec.objectBuilder(ctx.outerObjectName)
         ctx.serviceComment()?.let { outerObject.addKdoc("%L", it) }
         ServiceNameGenerator.apply(outerObject, ctx)
-        DescriptorSuppliersGenerator.apply(outerObject, ctx)
+        // Schema descriptors require Descriptors.FileDescriptor +
+        // io.grpc.protobuf.Proto*DescriptorSupplier, neither of which exist
+        // in the lite runtime (protobuf-javalite + grpc-protobuf-lite). In
+        // lite mode the suppliers are dropped and `setSchemaDescriptor(...)`
+        // is omitted from MethodDescriptor / ServiceDescriptor builders —
+        // matching what upstream protoc-gen-grpc-java does for lite.
+        if (!ctx.config.lite) DescriptorSuppliersGenerator.apply(outerObject, ctx)
         MethodDescriptorsGenerator.apply(outerObject, ctx)
         ServiceDescriptorGenerator.apply(outerObject, ctx)
         ClientStubGenerator.apply(outerObject, ctx)

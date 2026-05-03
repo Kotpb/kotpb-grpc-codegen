@@ -43,6 +43,31 @@ class GeneratorOptionsTest {
     }
 
     @Test
+    fun `lite output omits schema descriptors and supplier classes`() {
+        // The lite runtime (protobuf-javalite + grpc-protobuf-lite) doesn't
+        // ship Descriptors.FileDescriptor or the io.grpc.protobuf.Proto*
+        // DescriptorSupplier interfaces, so emitting them would not compile
+        // for lite consumers. Upstream protoc-gen-grpc-java does the same
+        // omission in lite mode.
+        val content = runWithParameter("lite=true")
+        assertThat(content).doesNotContain(".setSchemaDescriptor(")
+        assertThat(content).doesNotContain("FileDescriptorSupplier")
+        assertThat(content).doesNotContain("MethodDescriptorSupplier")
+        assertThat(content).doesNotContain("ProtoServiceDescriptorSupplier")
+        assertThat(content).doesNotContain("ProtoMethodDescriptorSupplier")
+        assertThat(content).doesNotContain("findServiceByName")
+        assertThat(content).doesNotContain("Descriptors")
+    }
+
+    @Test
+    fun `default mode keeps schema descriptors and supplier classes`() {
+        val content = runWithParameter("")
+        assertThat(content).contains(".setSchemaDescriptor(")
+        assertThat(content).contains("FileDescriptorSupplier")
+        assertThat(content).contains("MethodDescriptorSupplier")
+    }
+
+    @Test
     fun `java_package option overrides the file's java_package`() {
         val content = runWithParameter("java_package=io.alternate.echo")
         assertThat(content).contains("package io.alternate.echo")

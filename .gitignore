@@ -7,3 +7,4 @@ out/
 .kotlin/
 local.properties
 _pom_cache/
+_thirdparty/
