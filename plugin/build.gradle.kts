@@ -3,6 +3,7 @@ plugins {
     application
     alias(libs.plugins.graalvm.native)
     `maven-publish`
+    signing
 }
 
 application {
@@ -130,16 +131,40 @@ publishing {
             artifactId = "kotpb-grpc-codegen"
             version = project.version.toString()
 
-            val binaryPath = project.findProperty("nativeBinaryFile") as? String
-            val classifier = project.findProperty("nativeBinaryClassifier") as? String
-            check((binaryPath == null) == (classifier == null)) {
-                "Both -PnativeBinaryFile and -PnativeBinaryClassifier must be set " +
-                    "together (or neither)."
+            // Two modes:
+            //   single — each per-platform CI job builds and publishes its
+            //     classifier (used by mavenLocal smoke tests; pass
+            //     -PnativeBinaryFile=... -PnativeBinaryClassifier=...).
+            //   aggregate — the publish-maven-central CI job downloads every
+            //     classifier .exe and publishes them in ONE Gradle invocation
+            //     so the gradle-nexus-publish-plugin batches them into a
+            //     single Sonatype Central deployment that close+release can
+            //     finalize atomically (pass -PnativeBinariesDir=...).
+            val singleFile = project.findProperty("nativeBinaryFile") as? String
+            val singleClassifier = project.findProperty("nativeBinaryClassifier") as? String
+            val aggregateDir = project.findProperty("nativeBinariesDir") as? String
+            check(
+                ((singleFile == null) == (singleClassifier == null)) &&
+                    !(aggregateDir != null && singleFile != null)
+            ) {
+                "Pass either (-PnativeBinaryFile + -PnativeBinaryClassifier) or " +
+                    "-PnativeBinariesDir, not both."
             }
-            if (binaryPath != null && classifier != null) {
-                artifact(file(binaryPath)) {
-                    this.classifier = classifier
+            if (singleFile != null && singleClassifier != null) {
+                artifact(file(singleFile)) {
+                    this.classifier = singleClassifier
                     extension = "exe" // Maven convention for protoc plugins, even on Unix.
+                }
+            }
+            if (aggregateDir != null) {
+                val ver = project.version.toString()
+                listOf("linux-x86_64", "linux-aarch_64", "osx-aarch_64", "windows-x86_64").forEach { cls ->
+                    val f = file("$aggregateDir/kotpb-grpc-codegen-$ver-$cls.exe")
+                    check(f.exists()) { "expected aggregated binary at $f (was the matrix complete?)" }
+                    artifact(f) {
+                        this.classifier = cls
+                        extension = "exe"
+                    }
                 }
             }
 
@@ -175,13 +200,25 @@ publishing {
         // Useful for local consumer testing.
         mavenLocal()
 
-        // Sonatype OSSRH / Maven Central is the production target. To enable,
-        // set OSSRH_USERNAME / OSSRH_PASSWORD secrets and (if you want
-        // staging/release automation) add gradle-nexus-publish-plugin in
-        // settings.gradle.kts. Until then this block is a no-op staging dir.
-        maven {
-            name = "stagingForCi"
-            url = uri(layout.buildDirectory.dir("staging-deploy"))
-        }
+        // gradle-nexus-publish-plugin (applied at root) wires the
+        // `sonatype` repository pointed at central.sonatype.com when
+        // SONATYPE_USERNAME / SONATYPE_PASSWORD env vars are set. The
+        // CI publish-maven-central job uses
+        //   ./gradlew :plugin:publishNativeBinaryPublicationToSonatypeRepository
+        //   ./gradlew closeAndReleaseSonatypeStagingRepository
+        // to do the Central Portal handoff.
+    }
+}
+
+// Sign the published artifacts with our GPG key. Skipped silently when
+// SIGNING_KEY isn't in the environment so local `publishToMavenLocal`
+// invocations don't require GPG configured. CI sets both env vars from
+// repo secrets.
+signing {
+    val signingKey: String? = providers.environmentVariable("SIGNING_KEY").orNull
+    val signingPassword: String? = providers.environmentVariable("SIGNING_PASSWORD").orNull
+    if (signingKey != null && signingPassword != null) {
+        useInMemoryPgpKeys(signingKey, signingPassword)
+        sign(publishing.publications["nativeBinary"])
     }
 }
