@@ -34,8 +34,13 @@ jobs:
           - os: ubuntu-24.04-arm
             classifier: linux-aarch_64
             binary: protoc-gen-grpc-kotlin
-            musl: true
-            extra-build-args: '--static --libc=musl'
+            # musl: graalvm/setup-graalvm@v1 only ships an x86_64 musl-gcc;
+            # forcing musl on aarch64 fails with a "syntax error" because
+            # the runner can't exec it. Drop static-musl on aarch64 — the
+            # binary becomes glibc-dynamic, which still runs everywhere
+            # except super-minimal alpine/distroless aarch64 images.
+            musl: false
+            extra-build-args: ''
           - os: macos-13
             classifier: osx-x86_64
             binary: protoc-gen-grpc-kotlin
