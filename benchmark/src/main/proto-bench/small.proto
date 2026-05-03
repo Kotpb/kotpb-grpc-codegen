@@ -1,0 +1,84 @@
+syntax = "proto3";
+package small;
+option java_package = "com.example.small";
+option java_multiple_files = true;
+
+message S0M0Req {
+  string id = 1;
+  string name = 2;
+  int64 ts = 3;
+  bytes payload = 4;
+  repeated string tags = 5;
+}
+message S0M0Resp {
+  string id = 1;
+  string name = 2;
+  int64 ts = 3;
+  bytes payload = 4;
+  repeated string tags = 5;
+}
+message S0M1Req {
+  string id = 1;
+  string name = 2;
+  int64 ts = 3;
+  bytes payload = 4;
+  repeated string tags = 5;
+}
+message S0M1Resp {
+  string id = 1;
+  string name = 2;
+  int64 ts = 3;
+  bytes payload = 4;
+  repeated string tags = 5;
+}
+message S0M2Req {
+  string id = 1;
+  string name = 2;
+  int64 ts = 3;
+  bytes payload = 4;
+  repeated string tags = 5;
+}
+message S0M2Resp {
+  string id = 1;
+  string name = 2;
+  int64 ts = 3;
+  bytes payload = 4;
+  repeated string tags = 5;
+}
+message S0M3Req {
+  string id = 1;
+  string name = 2;
+  int64 ts = 3;
+  bytes payload = 4;
+  repeated string tags = 5;
+}
+message S0M3Resp {
+  string id = 1;
+  string name = 2;
+  int64 ts = 3;
+  bytes payload = 4;
+  repeated string tags = 5;
+}
+message S0M4Req {
+  string id = 1;
+  string name = 2;
+  int64 ts = 3;
+  bytes payload = 4;
+  repeated string tags = 5;
+}
+message S0M4Resp {
+  string id = 1;
+  string name = 2;
+  int64 ts = 3;
+  bytes payload = 4;
+  repeated string tags = 5;
+}
+
+service Service0 {
+  rpc Unary0(S0M0Req) returns (S0M0Resp);
+  rpc ServerStream1(S0M1Req) returns (stream S0M1Resp);
+  rpc ClientStream2(stream S0M2Req) returns (S0M2Resp);
+  rpc BidiStream3(stream S0M3Req) returns (stream S0M3Resp);
+  rpc Unary4(S0M4Req) returns (S0M4Resp);
+}
+

@@ -24,4 +24,5 @@ include(
     ":generator",
     ":plugin",
     ":e2e-tests",
+    ":benchmark",
 )

@@ -1,0 +1,325 @@
+syntax = "proto3";
+package medium;
+option java_package = "com.example.medium";
+option java_multiple_files = true;
+
+message S0M0Req {
+  string id = 1;
+  string name = 2;
+  int64 ts = 3;
+  bytes payload = 4;
+  repeated string tags = 5;
+}
+message S0M0Resp {
+  string id = 1;
+  string name = 2;
+  int64 ts = 3;
+  bytes payload = 4;
+  repeated string tags = 5;
+}
+message S0M1Req {
+  string id = 1;
+  string name = 2;
+  int64 ts = 3;
+  bytes payload = 4;
+  repeated string tags = 5;
+}
+message S0M1Resp {
+  string id = 1;
+  string name = 2;
+  int64 ts = 3;
+  bytes payload = 4;
+  repeated string tags = 5;
+}
+message S0M2Req {
+  string id = 1;
+  string name = 2;
+  int64 ts = 3;
+  bytes payload = 4;
+  repeated string tags = 5;
+}
+message S0M2Resp {
+  string id = 1;
+  string name = 2;
+  int64 ts = 3;
+  bytes payload = 4;
+  repeated string tags = 5;
+}
+message S0M3Req {
+  string id = 1;
+  string name = 2;
+  int64 ts = 3;
+  bytes payload = 4;
+  repeated string tags = 5;
+}
+message S0M3Resp {
+  string id = 1;
+  string name = 2;
+  int64 ts = 3;
+  bytes payload = 4;
+  repeated string tags = 5;
+}
+
+message S1M0Req {
+  string id = 1;
+  string name = 2;
+  int64 ts = 3;
+  bytes payload = 4;
+  repeated string tags = 5;
+}
+message S1M0Resp {
+  string id = 1;
+  string name = 2;
+  int64 ts = 3;
+  bytes payload = 4;
+  repeated string tags = 5;
+}
+message S1M1Req {
+  string id = 1;
+  string name = 2;
+  int64 ts = 3;
+  bytes payload = 4;
+  repeated string tags = 5;
+}
+message S1M1Resp {
+  string id = 1;
+  string name = 2;
+  int64 ts = 3;
+  bytes payload = 4;
+  repeated string tags = 5;
+}
+message S1M2Req {
+  string id = 1;
+  string name = 2;
+  int64 ts = 3;
+  bytes payload = 4;
+  repeated string tags = 5;
+}
+message S1M2Resp {
+  string id = 1;
+  string name = 2;
+  int64 ts = 3;
+  bytes payload = 4;
+  repeated string tags = 5;
+}
+message S1M3Req {
+  string id = 1;
+  string name = 2;
+  int64 ts = 3;
+  bytes payload = 4;
+  repeated string tags = 5;
+}
+message S1M3Resp {
+  string id = 1;
+  string name = 2;
+  int64 ts = 3;
+  bytes payload = 4;
+  repeated string tags = 5;
+}
+
+message S2M0Req {
+  string id = 1;
+  string name = 2;
+  int64 ts = 3;
+  bytes payload = 4;
+  repeated string tags = 5;
+}
+message S2M0Resp {
+  string id = 1;
+  string name = 2;
+  int64 ts = 3;
+  bytes payload = 4;
+  repeated string tags = 5;
+}
+message S2M1Req {
+  string id = 1;
+  string name = 2;
+  int64 ts = 3;
+  bytes payload = 4;
+  repeated string tags = 5;
+}
+message S2M1Resp {
+  string id = 1;
+  string name = 2;
+  int64 ts = 3;
+  bytes payload = 4;
+  repeated string tags = 5;
+}
+message S2M2Req {
+  string id = 1;
+  string name = 2;
+  int64 ts = 3;
+  bytes payload = 4;
+  repeated string tags = 5;
+}
+message S2M2Resp {
+  string id = 1;
+  string name = 2;
+  int64 ts = 3;
+  bytes payload = 4;
+  repeated string tags = 5;
+}
+message S2M3Req {
+  string id = 1;
+  string name = 2;
+  int64 ts = 3;
+  bytes payload = 4;
+  repeated string tags = 5;
+}
+message S2M3Resp {
+  string id = 1;
+  string name = 2;
+  int64 ts = 3;
+  bytes payload = 4;
+  repeated string tags = 5;
+}
+
+message S3M0Req {
+  string id = 1;
+  string name = 2;
+  int64 ts = 3;
+  bytes payload = 4;
+  repeated string tags = 5;
+}
+message S3M0Resp {
+  string id = 1;
+  string name = 2;
+  int64 ts = 3;
+  bytes payload = 4;
+  repeated string tags = 5;
+}
+message S3M1Req {
+  string id = 1;
+  string name = 2;
+  int64 ts = 3;
+  bytes payload = 4;
+  repeated string tags = 5;
+}
+message S3M1Resp {
+  string id = 1;
+  string name = 2;
+  int64 ts = 3;
+  bytes payload = 4;
+  repeated string tags = 5;
+}
+message S3M2Req {
+  string id = 1;
+  string name = 2;
+  int64 ts = 3;
+  bytes payload = 4;
+  repeated string tags = 5;
+}
+message S3M2Resp {
+  string id = 1;
+  string name = 2;
+  int64 ts = 3;
+  bytes payload = 4;
+  repeated string tags = 5;
+}
+message S3M3Req {
+  string id = 1;
+  string name = 2;
+  int64 ts = 3;
+  bytes payload = 4;
+  repeated string tags = 5;
+}
+message S3M3Resp {
+  string id = 1;
+  string name = 2;
+  int64 ts = 3;
+  bytes payload = 4;
+  repeated string tags = 5;
+}
+
+message S4M0Req {
+  string id = 1;
+  string name = 2;
+  int64 ts = 3;
+  bytes payload = 4;
+  repeated string tags = 5;
+}
+message S4M0Resp {
+  string id = 1;
+  string name = 2;
+  int64 ts = 3;
+  bytes payload = 4;
+  repeated string tags = 5;
+}
+message S4M1Req {
+  string id = 1;
+  string name = 2;
+  int64 ts = 3;
+  bytes payload = 4;
+  repeated string tags = 5;
+}
+message S4M1Resp {
+  string id = 1;
+  string name = 2;
+  int64 ts = 3;
+  bytes payload = 4;
+  repeated string tags = 5;
+}
+message S4M2Req {
+  string id = 1;
+  string name = 2;
+  int64 ts = 3;
+  bytes payload = 4;
+  repeated string tags = 5;
+}
+message S4M2Resp {
+  string id = 1;
+  string name = 2;
+  int64 ts = 3;
+  bytes payload = 4;
+  repeated string tags = 5;
+}
+message S4M3Req {
+  string id = 1;
+  string name = 2;
+  int64 ts = 3;
+  bytes payload = 4;
+  repeated string tags = 5;
+}
+message S4M3Resp {
+  string id = 1;
+  string name = 2;
+  int64 ts = 3;
+  bytes payload = 4;
+  repeated string tags = 5;
+}
+
+service Service0 {
+  rpc Unary0(S0M0Req) returns (S0M0Resp);
+  rpc ServerStream1(S0M1Req) returns (stream S0M1Resp);
+  rpc ClientStream2(stream S0M2Req) returns (S0M2Resp);
+  rpc BidiStream3(stream S0M3Req) returns (stream S0M3Resp);
+}
+
+service Service1 {
+  rpc Unary0(S1M0Req) returns (S1M0Resp);
+  rpc ServerStream1(S1M1Req) returns (stream S1M1Resp);
+  rpc ClientStream2(stream S1M2Req) returns (S1M2Resp);
+  rpc BidiStream3(stream S1M3Req) returns (stream S1M3Resp);
+}
+
+service Service2 {
+  rpc Unary0(S2M0Req) returns (S2M0Resp);
+  rpc ServerStream1(S2M1Req) returns (stream S2M1Resp);
+  rpc ClientStream2(stream S2M2Req) returns (S2M2Resp);
+  rpc BidiStream3(stream S2M3Req) returns (stream S2M3Resp);
+}
+
+service Service3 {
+  rpc Unary0(S3M0Req) returns (S3M0Resp);
+  rpc ServerStream1(S3M1Req) returns (stream S3M1Resp);
+  rpc ClientStream2(stream S3M2Req) returns (S3M2Resp);
+  rpc BidiStream3(stream S3M3Req) returns (stream S3M3Resp);
+}
+
+service Service4 {
+  rpc Unary0(S4M0Req) returns (S4M0Resp);
+  rpc ServerStream1(S4M1Req) returns (stream S4M1Resp);
+  rpc ClientStream2(stream S4M2Req) returns (S4M2Resp);
+  rpc BidiStream3(stream S4M3Req) returns (stream S4M3Resp);
+}
+
