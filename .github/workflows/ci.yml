@@ -37,8 +37,13 @@ jobs:
           version: '34.x'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: ./gradlew build
-        run: ./gradlew build --no-daemon --stacktrace
+      # nativeCompile is exercised by `.github/workflows/native-binaries.yml`
+      # (which uses graalvm/setup-graalvm@v1 with proper bin/ permissions).
+      # The foojay-downloaded GraalVM that Gradle resolves on bare runners
+      # lands native-image without +x, so skip it here and let the dedicated
+      # workflow cover it.
+      - name: ./gradlew build (without nativeCompile)
+        run: ./gradlew build -x :plugin:nativeCompile --no-daemon --stacktrace
 
       - name: Upload test reports on failure
         if: failure()
