@@ -15,6 +15,13 @@ on:
 permissions:
   contents: write     # required by softprops/action-gh-release on tag push
 
+# Cancel superseded native-binaries runs on the same ref while a PR is
+# iterating. Tag pushes keep their own concurrency group so a release run
+# is never killed by an unrelated tag landing seconds later.
+concurrency:
+  group: native-binaries-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   build:
     name: ${{ matrix.classifier }}
@@ -69,10 +76,16 @@ jobs:
         with:
           java-version: '21'
           distribution: 'graalvm-community'
-          cache: gradle
+          # Gradle caching is handled by gradle/actions/setup-gradle below
+          # (richer: caches Gradle dist + build cache + per-config keys).
+          # Leaving setup-graalvm's `cache: gradle` here would compete on the
+          # same paths and trip cache-corruption warnings.
           github-token: ${{ secrets.GITHUB_TOKEN }}
           native-image-musl: ${{ matrix.musl }}
           native-image-job-reports: 'true'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
 
       - name: Set up MSVC (Windows)
         if: runner.os == 'Windows'
