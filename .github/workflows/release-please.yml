@@ -1,0 +1,29 @@
+name: release-please
+
+# Two modes:
+#  * On every push to main, the action recomputes the next version from
+#    Conventional-Commits subjects since the last release tag and opens or
+#    amends a "chore(main): release vX.Y.Z" PR with the proposed version
+#    + CHANGELOG.md diff + bumped gradle.properties.
+#  * When that release PR is merged, the action sees its own merge commit,
+#    cuts the tag, and creates the GitHub Release whose body is the new
+#    CHANGELOG section. The tag push is what kicks off
+#    `.github/workflows/native-binaries.yml` (already wired for `v*`).
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@v4
+        id: release
+        with:
+          config-file: .release-please-config.json
+          manifest-file: .release-please-manifest.json
