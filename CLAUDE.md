@@ -119,9 +119,15 @@ drop-in compatible.
 `.github/workflows/native-binaries.yml` builds 5 classifier-per-platform
 binaries on every `v*` tag (or workflow_dispatch):
 
-- `linux-x86_64` and `linux-aarch_64` — musl-static (no glibc dependency)
-- `osx-x86_64`, `osx-aarch_64`
-- `windows-x86_64`
+- `linux-x86_64` — musl-static (no glibc dependency, runs on alpine/distroless)
+- `linux-aarch_64` — mostly-static (`-H:+StaticExecutableWithDynamicLibC`):
+  GraalVM runtime statically linked, libc stays dynamic against glibc.
+  Runs on every mainstream aarch64 distro and `gcr.io/distroless/base`,
+  but **not** alpine:aarch64. GraalVM CE doesn't ship static musl libs
+  for linux-aarch64 (oracle/graal#4645, #10018 — both closed "not planned"),
+  so musl-static aarch64 isn't achievable with our current toolchain.
+- `osx-x86_64`, `osx-aarch_64` — dynamic against libSystem
+- `windows-x86_64` — dynamic against msvcrt
 
 Smoke test in CI: native binary's output is `diff`'d byte-for-byte against
 the JVM dist's output for the same `.proto`. Any divergence is a

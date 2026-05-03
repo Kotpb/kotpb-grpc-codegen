@@ -34,13 +34,17 @@ jobs:
           - os: ubuntu-24.04-arm
             classifier: linux-aarch_64
             binary: protoc-gen-grpc-kotlin
-            # musl: graalvm/setup-graalvm@v1 only ships an x86_64 musl-gcc;
-            # forcing musl on aarch64 fails with a "syntax error" because
-            # the runner can't exec it. Drop static-musl on aarch64 — the
-            # binary becomes glibc-dynamic, which still runs everywhere
-            # except super-minimal alpine/distroless aarch64 images.
+            # GraalVM CE doesn't ship static musl libs for linux-aarch64 —
+            # the JDK distribution has lib/static/linux-aarch64/glibc/ but
+            # no musl sibling (oracle/graal#4645, #10018, both closed "not
+            # planned"). graalvm/setup-graalvm@v1 has nothing aarch64 to
+            # wire either. So aarch64 ships "mostly-static": GraalVM
+            # runtime + zlib are statically linked, libc stays dynamic
+            # against glibc. Runs on every mainstream aarch64 distro and
+            # gcr.io/distroless/base. Won't run on alpine:aarch64 — that
+            # would need a separate alpine-arm64 docker-based build.
             musl: false
-            extra-build-args: ''
+            extra-build-args: '-H:+StaticExecutableWithDynamicLibC'
           - os: macos-13
             classifier: osx-x86_64
             binary: protoc-gen-grpc-kotlin
