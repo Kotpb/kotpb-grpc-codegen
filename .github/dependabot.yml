@@ -1,0 +1,26 @@
+# Dependabot configuration.
+#
+# Weekly updates for Gradle deps (libs.versions.toml + the Gradle plugin block)
+# and GitHub Actions versions. Group everything into a small number of PRs to
+# keep the noise low; security alerts still open individual PRs.
+version: 2
+updates:
+  - package-ecosystem: gradle
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      gradle-deps:
+        patterns:
+          - "*"
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+    groups:
+      gh-actions:
+        patterns:
+          - "*"
