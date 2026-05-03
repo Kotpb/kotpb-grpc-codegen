@@ -357,23 +357,44 @@ For local integration testing before a release is published:
 
 Consumer build adds `mavenLocal()` to repositories.
 
-## Maven Central publishing (TODO for the maintainer)
+## Releases & versioning
 
-The Gradle publication skeleton is in place — `:plugin` produces a
-`nativeBinary` Maven publication with the classifier-per-platform shape
-described above, and the CI workflow uploads each platform's staging
-directory as an artifact. To turn that into actual Maven Central releases
-you need to:
+Versioning is automated by [release-please](https://github.com/googleapis/release-please)
+driven by Conventional-Commits PR titles. Squash-merge is the only allowed
+merge mode, so each PR title becomes the squashed commit subject release-please
+reads.
 
-1. Claim the `io.github.kotpb` namespace on Sonatype Central (or change
-   the `groupId` in `:plugin/build.gradle.kts` to a namespace you already own).
-2. Add a GPG signing key (Maven Central requires `.asc` signatures on every
-   artifact).
-3. Apply `io.github.gradle-nexus.publish-plugin` in `settings.gradle.kts` and
-   add a publish job to `.github/workflows/native-binaries.yml` that
-   downloads all `maven-staging-*` artifacts and runs
-   `:closeAndReleaseStagingRepository` with credentials in
-   `${{ secrets.OSSRH_USERNAME }}` / `${{ secrets.OSSRH_PASSWORD }}` /
-   `${{ secrets.SIGNING_KEY }}`.
+The release process:
 
-Until then, releases land as binary attachments on the GitHub Release page.
+1. PRs land on `main`. `feat:` → minor bump, `fix:` → patch, `feat!:` /
+   `BREAKING CHANGE:` → major.
+2. release-please maintains an open `chore(main): release vX.Y.Z` PR on the
+   repo showing the proposed version + CHANGELOG diff.
+3. Merging that PR is the manual release trigger — it tags `vX.Y.Z`, creates
+   the GitHub Release, and (with secrets configured) publishes to Maven Central.
+
+CHANGELOG is at [`CHANGELOG.md`](CHANGELOG.md).
+
+### Maven Central
+
+Once a release lands, the artifact is consumable as:
+
+```kotlin
+protobuf {
+    plugins {
+        id("grpckt") {
+            artifact = "io.github.kotpb:kotpb-grpc-codegen:<version>"
+        }
+    }
+}
+```
+
+`protobuf-gradle-plugin` auto-resolves the matching classifier for the host
+OS / arch — see "Consuming the native binary as a protoc plugin" above.
+
+Maven Central setup is documented for maintainers in
+[CLAUDE.md → Release process → One-time maintainer setup](CLAUDE.md). It
+requires (one-time): claim the `io.github.kotpb` namespace at
+[central.sonatype.com](https://central.sonatype.com), generate a GPG key,
+and set the `SONATYPE_USERNAME` / `SONATYPE_PASSWORD` / `SIGNING_KEY` /
+`SIGNING_PASSWORD` repo secrets.

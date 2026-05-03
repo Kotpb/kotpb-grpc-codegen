@@ -134,6 +134,109 @@ being phased out (`macos-12` retired Dec 2024). Intel Mac users — rare in
 2026 since Apple has shipped only Apple Silicon since 2020 — fall back to
 the JVM dist via `:plugin:installDist`.
 
+## Release process
+
+Versioning is automated by **release-please** (Google) driven by
+**Conventional Commits** in PR titles. Squash-merge is the only allowed
+merge mode, so each PR title becomes the squashed commit subject.
+
+### What lands a version bump
+
+| PR title prefix | Version bump | CHANGELOG section |
+|---|---|---|
+| `feat: ...` | minor | Features |
+| `fix: ...` / `perf: ...` / `revert: ...` | patch | Bug Fixes / Performance / Reverts |
+| `feat!: ...` or `BREAKING CHANGE:` in body | major | ⚠ BREAKING CHANGES |
+| `docs:`, `ci:`, `build:` | none | Visible in changelog |
+| `refactor:`, `test:`, `chore:` | none | Hidden from changelog |
+
+`.github/workflows/lint-pr-title.yml` blocks PRs whose title doesn't
+match — the merge button is the manual gate, the lint is its
+prerequisite.
+
+### How a release happens
+
+1. PRs land on `main` with Conventional-Commits titles.
+2. `.github/workflows/release-please.yml` runs after every push and
+   maintains a **release PR** (`chore(main): release vX.Y.Z`) showing
+   the proposed version, the CHANGELOG.md diff, and the bumped
+   `gradle.properties`.
+3. Maintainer reviews the release PR and **clicks merge** to release —
+   that's the manual trigger.
+4. release-please tags `vX.Y.Z` and creates the GitHub Release.
+5. The tag push fires `.github/workflows/native-binaries.yml`:
+   - `build` matrix produces the 4 classifier-per-platform binaries
+   - `release` job attaches them to the GitHub Release
+   - `publish-maven-central` job downloads all 4, runs ONE Gradle
+     publish (aggregate-mode via `-PnativeBinariesDir=...`) so the
+     gradle-nexus-publish-plugin batches them into a single Sonatype
+     Central deployment, then `closeAndReleaseSonatypeStagingRepository`
+     finalizes.
+6. Within ~5 min, artifacts are visible at
+   `https://central.sonatype.com/artifact/io.github.kotpb/kotpb-grpc-codegen`.
+
+### One-time maintainer setup (do before the first release)
+
+These steps gate the Maven Central side; the GitHub Release side works
+without them.
+
+1. **Claim the namespace** at <https://central.sonatype.com> →
+   "Add Namespace" → `io.github.kotpb`. Auto-verified via the GitHub
+   OAuth proof when the org name matches.
+2. **Generate a GPG key** for signing:
+   ```sh
+   gpg --full-generate-key      # RSA 4096, no expiry or 2y
+   gpg --list-secret-keys --keyid-format=long
+   gpg --armor --export-secret-keys <KEY-ID>     # → SIGNING_KEY value
+   gpg --keyserver keys.openpgp.org --send-keys <KEY-ID>
+   gpg --keyserver keyserver.ubuntu.com --send-keys <KEY-ID>
+   ```
+3. **Generate a Sonatype Central user token**:
+   central.sonatype.com → account dropdown → "View Account" →
+   "Generate User Token" → record `username` + `password`.
+4. **Set GitHub repo secrets**:
+   ```sh
+   gh secret set SONATYPE_USERNAME --repo Kotpb/kotpb-grpc-codegen
+   gh secret set SONATYPE_PASSWORD --repo Kotpb/kotpb-grpc-codegen
+   gh secret set SIGNING_KEY      --repo Kotpb/kotpb-grpc-codegen
+   gh secret set SIGNING_PASSWORD --repo Kotpb/kotpb-grpc-codegen
+   ```
+
+The `SIGNING_KEY` value is the entire `-----BEGIN PGP PRIVATE KEY BLOCK-----`
+block produced by `gpg --armor --export-secret-keys`. Without these
+secrets, the publish job would still attempt to run on tag-push and fail —
+either gate the workflow on a `vars.MAVEN_CENTRAL_READY == 'true'` repo
+variable or just don't push tags until secrets exist.
+
+### Local smoke test
+
+```powershell
+./gradlew :plugin:nativeCompile
+./gradlew :plugin:publishNativeBinaryPublicationToMavenLocal `
+    -PnativeBinaryFile="$pwd/plugin/build/native/nativeCompile/protoc-gen-grpc-kotlin.exe" `
+    -PnativeBinaryClassifier=windows-x86_64
+ls ~/.m2/repository/io/github/kotpb/kotpb-grpc-codegen/0.1.0/
+# expect: kotpb-grpc-codegen-0.1.0.pom
+#         kotpb-grpc-codegen-0.1.0-windows-x86_64.exe
+#         (.asc files only when SIGNING_KEY is set)
+```
+
+### Aggregate-mode publishing flow (CI only)
+
+The publish-maven-central job downloads every classifier .exe into
+`native-binaries/`, then:
+
+```sh
+./gradlew :plugin:publishNativeBinaryPublicationToSonatypeRepository \
+          closeAndReleaseSonatypeStagingRepository \
+          -PnativeBinariesDir="$PWD/native-binaries" --no-daemon
+```
+
+`-PnativeBinariesDir=...` switches the publishing block from
+"single classifier" mode (used by `mavenLocal` smoke) to "aggregate"
+mode where all 4 classifiers share one `MavenPublication` and therefore
+one Sonatype Central deployment. See `plugin/build.gradle.kts:139-160`.
+
 Smoke test in CI: native binary's output is `diff`'d byte-for-byte against
 the JVM dist's output for the same `.proto`. Any divergence is a
 native-image regression and the workflow fails before upload. Maven Central
