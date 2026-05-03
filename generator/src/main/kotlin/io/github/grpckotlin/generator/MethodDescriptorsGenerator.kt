@@ -1,5 +1,6 @@
 package io.github.grpckotlin.generator
 
+import com.google.protobuf.DescriptorProtos.MethodOptions.IdempotencyLevel
 import com.squareup.kotlinpoet.MemberName
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.PropertySpec
@@ -26,6 +27,16 @@ object MethodDescriptorsGenerator {
                     ".setFullMethodName(%T.generateFullMethodName(SERVICE_NAME, %S))",
                     TypeNames.MethodDescriptor, method.name,
                 )
+                // gRPC's setSafe/setIdempotent surface the proto's
+                // idempotency_level on the runtime MethodDescriptor (used by
+                // transport for HTTP semantics, retry policy hints, etc.).
+                // protoc-gen-grpc-java emits these in the same position;
+                // matching the order keeps cross-toolchain diffs clean.
+                when (method.options.idempotencyLevel) {
+                    IdempotencyLevel.NO_SIDE_EFFECTS -> addStatement(".setSafe(true)")
+                    IdempotencyLevel.IDEMPOTENT -> addStatement(".setIdempotent(true)")
+                    else -> Unit
+                }
                 addStatement(".setSampledToLocalTracing(true)")
                 addStatement(
                     ".setRequestMarshaller(%T.marshaller(%T.getDefaultInstance()))",

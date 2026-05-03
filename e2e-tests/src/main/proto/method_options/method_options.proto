@@ -1,0 +1,46 @@
+// Matrix cell: built-in `option idempotency_level` plus custom service/method
+// options. Confirms that:
+//   1. methods marked NO_SIDE_EFFECTS land as `MethodDescriptor.isSafe()`,
+//   2. methods marked IDEMPOTENT land as `MethodDescriptor.isIdempotent()`,
+//   3. arbitrary custom options round-trip through the schema descriptor
+//      and are reachable via `getExtension(...)` on both methods and services.
+
+syntax = "proto3";
+
+package method_options;
+
+import "google/protobuf/descriptor.proto";
+
+option java_package = "com.example.method_options";
+option java_outer_classname = "MethodOptionsProto";
+option java_multiple_files = true;
+
+extend google.protobuf.MethodOptions {
+  optional string method_label = 50001;
+}
+
+extend google.protobuf.ServiceOptions {
+  optional string service_label = 50002;
+}
+
+message Req { string id = 1; }
+message Resp { string id = 1; }
+
+service OptService {
+  option (service_label) = "svc-tag";
+
+  // No side effects: should surface as MethodDescriptor.isSafe() == true.
+  rpc PureLookup(Req) returns (Resp) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+    option (method_label) = "pure-tag";
+  }
+
+  // Idempotent: should surface as MethodDescriptor.isIdempotent() == true.
+  rpc IdempotentWrite(Req) returns (Resp) {
+    option idempotency_level = IDEMPOTENT;
+    option (method_label) = "idempotent-tag";
+  }
+
+  // No idempotency option: both isSafe / isIdempotent should be false.
+  rpc PlainWrite(Req) returns (Resp);
+}
