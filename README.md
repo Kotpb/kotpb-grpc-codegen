@@ -282,22 +282,29 @@ prerequisites still apply:
 ### Cross-platform binaries via CI
 
 `.github/workflows/native-binaries.yml` runs on every push of a `v*` tag and
-builds binaries for five targets, attaching them to the matching GitHub
+builds binaries for four targets, attaching them to the matching GitHub
 Release. The same workflow can be triggered manually from the Actions tab.
 
-| Classifier       | Runner             | Linkage             |
-| ---------------- | ------------------ | ------------------- |
-| `linux-x86_64`   | `ubuntu-latest`    | static (musl)       |
-| `linux-aarch_64` | `ubuntu-24.04-arm` | static (musl)       |
-| `osx-x86_64`     | `macos-13`         | dynamic (libSystem) |
-| `osx-aarch_64`   | `macos-latest`     | dynamic (libSystem) |
-| `windows-x86_64` | `windows-latest`   | dynamic (msvcrt)    |
+| Classifier       | Runner             | Linkage                           |
+| ---------------- | ------------------ | --------------------------------- |
+| `linux-x86_64`   | `ubuntu-latest`    | static (musl)                     |
+| `linux-aarch_64` | `ubuntu-24.04-arm` | mostly-static (glibc dynamic)     |
+| `osx-aarch_64`   | `macos-latest`     | dynamic (libSystem, Apple Silicon)|
+| `windows-x86_64` | `windows-latest`   | dynamic (msvcrt)                  |
 
-Both Linux binaries are statically linked against musl (`--static
---libc=musl`), so they run without glibc version surprises and work inside
-minimal containers (alpine, distroless). macOS and Windows are dynamically
-linked against the platform's system C library — that's the only practical
-option there.
+`linux-x86_64` is fully musl-static (`--static --libc=musl`) and runs in
+alpine / distroless. `linux-aarch_64` is mostly-static
+(`-H:+StaticExecutableWithDynamicLibC`) — GraalVM runtime is statically
+linked but libc stays dynamic against glibc, because GraalVM CE doesn't
+ship static musl libs for linux-aarch64 (`oracle/graal#4645`, `#10018`,
+both closed "not planned"). It runs on every mainstream aarch64 distro
+and `gcr.io/distroless/base`, just not `alpine:aarch64`.
+
+No `osx-x86_64` classifier is published: GitHub-hosted `macos-13` (Intel)
+runners are being phased out (`macos-12` retired Dec 2024) and the queue
+is chronically empty. Intel Mac users — rare in 2026 since Apple has
+shipped only Apple Silicon since 2020 — fall back to the JVM dist via
+`:plugin:installDist`.
 
 Each produced binary is **smoke-tested in CI** before upload by generating
 the same `.proto` through both the native binary and the JVM-mode plugin and

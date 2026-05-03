@@ -116,7 +116,7 @@ drop-in compatible.
 
 ## Native binary distribution
 
-`.github/workflows/native-binaries.yml` builds 5 classifier-per-platform
+`.github/workflows/native-binaries.yml` builds 4 classifier-per-platform
 binaries on every `v*` tag (or workflow_dispatch):
 
 - `linux-x86_64` — musl-static (no glibc dependency, runs on alpine/distroless)
@@ -126,8 +126,13 @@ binaries on every `v*` tag (or workflow_dispatch):
   but **not** alpine:aarch64. GraalVM CE doesn't ship static musl libs
   for linux-aarch64 (oracle/graal#4645, #10018 — both closed "not planned"),
   so musl-static aarch64 isn't achievable with our current toolchain.
-- `osx-x86_64`, `osx-aarch_64` — dynamic against libSystem
+- `osx-aarch_64` — dynamic against libSystem (Apple Silicon)
 - `windows-x86_64` — dynamic against msvcrt
+
+No `osx-x86_64` classifier: GitHub-hosted `macos-13` (Intel) runners are
+being phased out (`macos-12` retired Dec 2024). Intel Mac users — rare in
+2026 since Apple has shipped only Apple Silicon since 2020 — fall back to
+the JVM dist via `:plugin:installDist`.
 
 Smoke test in CI: native binary's output is `diff`'d byte-for-byte against
 the JVM dist's output for the same `.proto`. Any divergence is a
