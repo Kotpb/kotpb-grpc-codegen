@@ -62,7 +62,7 @@ jobs:
             extra-build-args: ''
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Set up GraalVM
         uses: graalvm/setup-graalvm@v1
@@ -178,14 +178,14 @@ jobs:
             -PnativeBinaryClassifier="${{ matrix.classifier }}"
 
       - name: Upload binary artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: kotpb-grpc-codegen-${{ matrix.classifier }}
           path: out/*
           if-no-files-found: error
 
       - name: Upload Maven staging dir
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: maven-staging-${{ matrix.classifier }}
           path: plugin/build/staging-deploy/**
@@ -198,7 +198,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download all binary artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: dist
           pattern: 'kotpb-grpc-codegen-*'
@@ -208,7 +208,7 @@ jobs:
         run: ls -la dist/
 
       - name: Attach binaries to release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: dist/*
           fail_on_unmatched_files: true
