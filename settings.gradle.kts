@@ -1,4 +1,4 @@
-rootProject.name = "grpc-kotlin"
+rootProject.name = "kotpb-grpc-codegen"
 
 pluginManagement {
     repositories {

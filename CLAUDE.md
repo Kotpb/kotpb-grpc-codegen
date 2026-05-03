@@ -1,9 +1,13 @@
-# grpc-kotlin compiler — project context
+# kotpb-grpc-codegen — project context
 
-Pure-Kotlin reimplementation of `protoc-gen-grpc-kotlin`. Emits gRPC stubs +
-impl bases that run against `io.grpc:grpc-kotlin-stub` unchanged, but the
-generated code is **self-contained**: no `protoc-gen-grpc-java` (`*Grpc`
-classes) needed — only `protoc-gen-java` for messages.
+Pure-Kotlin reimplementation of `protoc-gen-grpc-kotlin`, published as
+`io.github.kotpb:kotpb-grpc-codegen` under the [Kotpb](https://github.com/Kotpb)
+GitHub org. Emits gRPC stubs + impl bases that run against
+`io.grpc:grpc-kotlin-stub` unchanged, but the generated code is
+**self-contained**: no `protoc-gen-grpc-java` (`*Grpc` classes) needed — only
+`protoc-gen-java` for messages. The native binary keeps the canonical name
+`protoc-gen-grpc-kotlin` so consumers' `--grpc-kotlin_out=` invocations are
+drop-in compatible.
 
 ## Module layout
 
@@ -20,7 +24,8 @@ classes) needed — only `protoc-gen-java` for messages.
 - `:e2e-tests` — real protoc + in-process gRPC tests. **Folder names are
   self-documenting** (`proto3_multifiles/`, `editions2024/`, etc.) — keep
   them that way; folder name == proto file name == proto package suffix.
-- `buildSrc/` — single convention plugin `grpckotlin.kotlin-conventions`.
+- `buildSrc/` — convention plugin `kotpb.kotlin-conventions` plus the
+  custom `DownloadHyperfineTask` used by `:benchmark`.
 
 ## Load-bearing design invariants (do not drift from these)
 
@@ -122,4 +127,4 @@ Smoke test in CI: native binary's output is `diff`'d byte-for-byte against
 the JVM dist's output for the same `.proto`. Any divergence is a
 native-image regression and the workflow fails before upload. Maven Central
 publishing is wired but not active — needs maintainer to claim the
-`io.github.grpckotlin` namespace and add OSSRH/GPG secrets.
+`io.github.kotpb` namespace and add OSSRH/GPG secrets.

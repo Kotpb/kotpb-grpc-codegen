@@ -1,12 +1,12 @@
 plugins {
-    id("grpckotlin.kotlin-conventions")
+    id("kotpb.kotlin-conventions")
     application
     alias(libs.plugins.graalvm.native)
     `maven-publish`
 }
 
 application {
-    mainClass.set("io.github.grpckotlin.plugin.MainKt")
+    mainClass.set("io.github.kotpb.plugin.MainKt")
     applicationName = "protoc-gen-grpc-kotlin"
 }
 
@@ -25,7 +25,7 @@ graalvmNative {
     toolchainDetection.set(true)
 
     binaries.named("main") {
-        mainClass.set("io.github.grpckotlin.plugin.MainKt")
+        mainClass.set("io.github.kotpb.plugin.MainKt")
         imageName.set("protoc-gen-grpc-kotlin")
         buildArgs.addAll(
             // Fail loudly instead of silently producing a slow JIT-fallback
@@ -41,7 +41,7 @@ graalvmNative {
             // catches missing-class errors at build instead of runtime.
             // Scope deliberately narrow so library deps (which may legitimately
             // initialize at run time) aren't affected.
-            "--link-at-build-time=io.github.grpckotlin",
+            "--link-at-build-time=io.github.kotpb",
 
             // Speed-of-execution tier; native-image build itself takes longer
             // but the plugin runs once per protoc invocation so the runtime
@@ -102,7 +102,7 @@ graalvmNative {
 //
 // producing
 //
-//     io.github.grpckotlin:protoc-gen-grpc-kotlin:VERSION:linux-x86_64@exe
+//     io.github.kotpb:kotpb-grpc-codegen:VERSION:linux-x86_64@exe
 //
 // Same GAV across every platform, only the classifier varies. Consumers
 // then use the protobuf-gradle-plugin's standard syntax:
@@ -110,7 +110,7 @@ graalvmNative {
 //     protobuf {
 //         plugins {
 //             id("grpckt") {
-//                 artifact = "io.github.grpckotlin:protoc-gen-grpc-kotlin:VERSION"
+//                 artifact = "io.github.kotpb:kotpb-grpc-codegen:VERSION"
 //             }
 //         }
 //     }
@@ -121,8 +121,13 @@ graalvmNative {
 publishing {
     publications {
         create<MavenPublication>("nativeBinary") {
-            groupId = "io.github.grpckotlin"
-            artifactId = "protoc-gen-grpc-kotlin"
+            groupId = "io.github.kotpb"
+            // Maven artifact-id is brand-prefixed and distinct from upstream's
+            // io.grpc:protoc-gen-grpc-kotlin so neither artifact is mistaken
+            // for the other. The native binary is still named
+            // `protoc-gen-grpc-kotlin` so consumers' --grpc-kotlin_out=
+            // invocations work unchanged.
+            artifactId = "kotpb-grpc-codegen"
             version = project.version.toString()
 
             val binaryPath = project.findProperty("nativeBinaryFile") as? String
@@ -139,12 +144,12 @@ publishing {
             }
 
             pom {
-                name.set("protoc-gen-grpc-kotlin (native)")
+                name.set("kotpb-grpc-codegen (native)")
                 description.set(
                     "Pure-Kotlin protoc plugin for gRPC Kotlin coroutine stubs. " +
                         "Native binary; runs without a JVM."
                 )
-                url.set("https://github.com/grpckotlin/grpc-kotlin")
+                url.set("https://github.com/Kotpb/kotpb-grpc-codegen")
                 licenses {
                     license {
                         name.set("Apache-2.0")
@@ -153,14 +158,14 @@ publishing {
                 }
                 developers {
                     developer {
-                        id.set("grpckotlin")
-                        name.set("grpc-kotlin maintainers")
+                        id.set("kotpb")
+                        name.set("Kotpb maintainers")
                     }
                 }
                 scm {
-                    url.set("https://github.com/grpckotlin/grpc-kotlin")
-                    connection.set("scm:git:https://github.com/grpckotlin/grpc-kotlin.git")
-                    developerConnection.set("scm:git:ssh://github.com/grpckotlin/grpc-kotlin.git")
+                    url.set("https://github.com/Kotpb/kotpb-grpc-codegen")
+                    connection.set("scm:git:https://github.com/Kotpb/kotpb-grpc-codegen.git")
+                    developerConnection.set("scm:git:ssh://github.com/Kotpb/kotpb-grpc-codegen.git")
                 }
             }
         }

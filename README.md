@@ -1,4 +1,4 @@
-# grpc-kotlin compiler (pure-Kotlin reimplementation)
+# kotpb-grpc-codegen (pure-Kotlin reimplementation of `protoc-gen-grpc-kotlin`)
 
 A protoc plugin (`protoc-gen-grpc-kotlin`) that generates Kotlin coroutine gRPC
 client stubs and server bases. Compatible with the existing
@@ -37,7 +37,7 @@ protobuf {
     protoc { artifact = "com.google.protobuf:protoc:<version>" }
     plugins {
         id("grpckt") {
-            artifact = "io.github.grpckotlin:protoc-gen-grpc-kotlin:<version>"
+            artifact = "io.github.kotpb:kotpb-grpc-codegen:<version>"
         }
     }
     generateProtoTasks {
@@ -104,9 +104,13 @@ that should still resolve every symbol the generated code imports.
   combination, then runs in-process gRPC client/server tests for unary,
   server-streaming, client-streaming, and bidi RPCs. Includes wire-level
   interop tests against hand-built `MethodDescriptor`s.
-- **`buildSrc/`** — single convention plugin (`grpckotlin.kotlin-conventions`)
-  applied to every module: Kotlin/JVM 17 toolchain via foojay, JUnit 5
-  platform, reproducible jars, consistent test logging.
+- **`buildSrc/`** — convention plugin (`kotpb.kotlin-conventions`) applied to
+  every module (Kotlin/JVM 17 toolchain via foojay, JUnit 5 platform,
+  reproducible jars, consistent test logging) plus the `DownloadHyperfineTask`
+  used by `:benchmark`.
+- **`:benchmark`** — opt-in build-time benchmark comparing this plugin (native
+  + JVM) to the upstream `protoc-gen-grpc-java` + `protoc-gen-grpc-kotlin`
+  pipeline via hyperfine.
 
 ## Build & test
 
@@ -309,7 +313,7 @@ output than the JVM build fails the workflow and is never published.
 | ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `--no-fallback`                             | Fail loudly instead of silently producing a slow JIT-fallback binary if reflection metadata is missing.                                                                                       |
 | `--strict-image-heap`                       | Future-default class-init mode; surfaces accidental run-time heap pollution at build time.                                                                                                    |
-| `--link-at-build-time=io.github.grpckotlin` | Forces our own classes to fully link at build time; tiny startup win and catches missing-class errors at build. Scoped to our group so library deps still init at runtime where they need to. |
+| `--link-at-build-time=io.github.kotpb`      | Forces our own classes to fully link at build time; tiny startup win and catches missing-class errors at build. Scoped to our group so library deps still init at runtime where they need to. |
 | `-O3`                                       | Speed-of-execution tier; the plugin runs once per protoc build so runtime savings compound.                                                                                                   |
 | `-march=compatibility`                      | Broad CPU-arch compatibility (never `-march=native` since we ship the binary).                                                                                                                |
 | `-R:MaxHeapSize=128m`                       | Cap at 128 MiB; the default is 80 % of physical RAM, wasteful for a one-shot CLI.                                                                                                             |
@@ -325,7 +329,7 @@ directly from `protobuf-gradle-plugin`:
 protobuf {
     plugins {
         id("grpckt") {
-            artifact = "io.github.grpckotlin:protoc-gen-grpc-kotlin:<version>"
+            artifact = "io.github.kotpb:kotpb-grpc-codegen:<version>"
         }
     }
 }
@@ -354,7 +358,7 @@ described above, and the CI workflow uploads each platform's staging
 directory as an artifact. To turn that into actual Maven Central releases
 you need to:
 
-1. Claim the `io.github.grpckotlin` namespace on Sonatype Central (or change
+1. Claim the `io.github.kotpb` namespace on Sonatype Central (or change
    the `groupId` in `:plugin/build.gradle.kts` to a namespace you already own).
 2. Add a GPG signing key (Maven Central requires `.asc` signatures on every
    artifact).

@@ -132,7 +132,7 @@ jobs:
           echo "Smoke test passed on ${{ matrix.classifier }}: native ≡ JVM."
 
       # Stage the binary using the Maven artifact naming convention --
-      #   protoc-gen-grpc-kotlin-<version>-<classifier>.exe
+      #   kotpb-grpc-codegen-<version>-<classifier>.exe
       # -- so consumers pulling from a Maven repo (or downloading from a
       # GitHub Release) get a filename that matches the classifier they
       # requested. The `.exe` extension is the Maven convention for protoc
@@ -145,7 +145,7 @@ jobs:
           version="${{ steps.ver.outputs.version }}"
           classifier="${{ matrix.classifier }}"
           src="plugin/build/native/nativeCompile/${{ matrix.binary }}"
-          dst_name="protoc-gen-grpc-kotlin-${version}-${classifier}.exe"
+          dst_name="kotpb-grpc-codegen-${version}-${classifier}.exe"
 
           mkdir -p out
           cp "$src" "out/$dst_name"
@@ -171,7 +171,7 @@ jobs:
       - name: Upload binary artifact
         uses: actions/upload-artifact@v4
         with:
-          name: protoc-gen-grpc-kotlin-${{ matrix.classifier }}
+          name: kotpb-grpc-codegen-${{ matrix.classifier }}
           path: out/*
           if-no-files-found: error
 
@@ -192,7 +192,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: dist
-          pattern: 'protoc-gen-grpc-kotlin-*'
+          pattern: 'kotpb-grpc-codegen-*'
           merge-multiple: true
 
       - name: List downloaded files

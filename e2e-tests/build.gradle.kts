@@ -1,7 +1,7 @@
 import com.google.protobuf.gradle.id
 
 plugins {
-    id("grpckotlin.kotlin-conventions")
+    id("kotpb.kotlin-conventions")
     alias(libs.plugins.protobuf)
 }
 

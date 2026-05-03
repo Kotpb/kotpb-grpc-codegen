@@ -1,8 +1,8 @@
-import io.github.grpckotlin.buildsrc.DownloadHyperfineTask
+import io.github.kotpb.buildsrc.DownloadHyperfineTask
 import org.gradle.internal.os.OperatingSystem
 
 plugins {
-    id("grpckotlin.kotlin-conventions")
+    id("kotpb.kotlin-conventions")
 }
 
 // ---- Cross-platform naming -------------------------------------------------
@@ -192,7 +192,7 @@ tasks.register<JavaExec>("bench") {
         "Writes results.json + results.md under build/reports/bench."
     dependsOn(prepareBenchTools)
     classpath = sourceSets.main.get().runtimeClasspath
-    mainClass.set("io.github.grpckotlin.benchmark.HyperfineRunner")
+    mainClass.set("io.github.kotpb.benchmark.HyperfineRunner")
     applyFilters()
 }
 
@@ -202,6 +202,6 @@ tasks.register<JavaExec>("regenFixtures") {
     // Compiled classes only (not runtimeClasspath) so we don't pull
     // processResources → prepareBenchTools and avoid needing GraalVM/hyperfine.
     classpath = sourceSets.main.get().output.classesDirs
-    mainClass.set("io.github.grpckotlin.benchmark.FixtureGenerator")
+    mainClass.set("io.github.kotpb.benchmark.FixtureGenerator")
     args(projectDir.resolve("src/main/proto-bench").absolutePath)
 }

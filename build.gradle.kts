@@ -1,5 +1,5 @@
 allprojects {
-    group = "io.github.grpckotlin"
+    group = "io.github.kotpb"
     version = "0.1.0-SNAPSHOT"
 }
 

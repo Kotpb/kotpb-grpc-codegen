@@ -1,5 +1,5 @@
 plugins {
-    id("grpckotlin.kotlin-conventions")
+    id("kotpb.kotlin-conventions")
 }
 
 dependencies {
