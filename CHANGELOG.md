@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.2.0](https://github.com/Kotpb/kotpb-grpc-codegen/compare/v0.1.1...v0.2.0) (2026-05-04)
+
+
+### Features
+
+* Add JVM-fallback shadow JAR as :jvm@jar classifier ([b98f5fe](https://github.com/Kotpb/kotpb-grpc-codegen/commit/b98f5fe3a64aa9351c0bafe0ac75e4cc39183385))
+
+
+### Bug Fixes
+
+* Revert -Os; GraalVM 21 doesn't support it ([f127132](https://github.com/Kotpb/kotpb-grpc-codegen/commit/f1271328ea92f6f4e1054f7e636599bc9fe8f86f))
+
+
+### Performance
+
+* Drop the GC entirely on the native binary (--gc=epsilon) ([a674f5d](https://github.com/Kotpb/kotpb-grpc-codegen/commit/a674f5dc59b5dd9b293bda2e5c3b29e0d359a7df))
+* Shrink shipped artifacts via shadowJar minimize + -Os ([414d70a](https://github.com/Kotpb/kotpb-grpc-codegen/commit/414d70a7badb48523b7d75b5a084ccddceb2644f))
+
+
+### Build & CI
+
+* Bump GraalVM 21 -&gt; 25 + switch native-image to -Os ([3486c94](https://github.com/Kotpb/kotpb-grpc-codegen/commit/3486c940cc090104b6950896c6178dd634711a55))
+* Diagnose SIGNING_KEY structure before publish ([5d6bdf5](https://github.com/Kotpb/kotpb-grpc-codegen/commit/5d6bdf5516fee566d3c58b16fa3948491aa20120))
+
 ## [0.1.1](https://github.com/Kotpb/kotpb-grpc-codegen/compare/v0.1.0...v0.1.1) (2026-05-04)
 
 
