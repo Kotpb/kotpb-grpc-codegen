@@ -200,6 +200,26 @@ jobs:
       - name: List downloaded files
         run: ls -la dist/
 
+      # Build artifacts carry the .exe extension uniformly because the
+      # Maven Central convention for protoc plugins uses .exe across all
+      # OSes — that's how protobuf-gradle-plugin resolves the per-platform
+      # classifier. But the GitHub Release is for humans grabbing the
+      # binary directly, where a Linux/macOS file ending in `.exe` reads
+      # as a Windows binary. Strip `.exe` from non-Windows assets here
+      # only; the Maven Central job (which downloads the same artifacts
+      # under their original .exe names from a separate path) is unaffected.
+      - name: Strip .exe from non-Windows binaries
+        run: |
+          set -euo pipefail
+          cd dist
+          shopt -s nullglob
+          for cls in linux-x86_64 linux-aarch_64 osx-aarch_64; do
+            for f in kotpb-grpc-codegen-*-"$cls".exe; do
+              mv "$f" "${f%.exe}"
+            done
+          done
+          ls -la
+
       - name: Attach binaries to release
         uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3
         with:
@@ -245,6 +265,25 @@ jobs:
           SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
           SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
         run: |
+          # Sanity-check secrets are wired and that the SIGNING_KEY survived
+          # the round-trip through `gh secret set` with newlines intact —
+          # a single-line key block fails inside the signing task with the
+          # cryptic "no value available" provider error.
+          if [[ -z "${SONATYPE_USERNAME:-}" || -z "${SONATYPE_PASSWORD:-}" ]]; then
+            echo "::error::SONATYPE_USERNAME / SONATYPE_PASSWORD secrets not set"; exit 1
+          fi
+          if [[ -z "${SIGNING_KEY:-}" || -z "${SIGNING_PASSWORD:-}" ]]; then
+            echo "::error::SIGNING_KEY / SIGNING_PASSWORD secrets not set"; exit 1
+          fi
+          if ! grep -q '^-----BEGIN PGP PRIVATE KEY BLOCK-----$' <<<"$SIGNING_KEY"; then
+            echo "::error::SIGNING_KEY must start with a line containing exactly '-----BEGIN PGP PRIVATE KEY BLOCK-----'. Re-export with 'gpg --armor --export-secret-keys <KEY-ID>' and pipe it into 'gh secret set SIGNING_KEY'."
+            exit 1
+          fi
+          if ! grep -q '^-----END PGP PRIVATE KEY BLOCK-----$' <<<"$SIGNING_KEY"; then
+            echo "::error::SIGNING_KEY ends incorrectly — line containing exactly '-----END PGP PRIVATE KEY BLOCK-----' missing. Newlines were probably stripped when setting the secret."
+            exit 1
+          fi
+
           ./gradlew :plugin:publishNativeBinaryPublicationToSonatypeRepository \
             closeAndReleaseSonatypeStagingRepository \
-            -PnativeBinariesDir="$PWD/native-binaries" --no-daemon
+            -PnativeBinariesDir="$PWD/native-binaries" --no-daemon --stacktrace

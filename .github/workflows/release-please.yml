@@ -22,8 +22,16 @@ jobs:
   release-please:
     runs-on: ubuntu-latest
     steps:
+      # Use a PAT (RELEASE_PLEASE_TOKEN) instead of GITHUB_TOKEN so the
+      # tag pushed when the release PR is merged can trigger downstream
+      # workflows. GitHub's tag/push events created via GITHUB_TOKEN are
+      # silently dropped (loop-protection), which would leave
+      # `native-binaries.yml` un-fired on every release until manually
+      # dispatched. The PAT is fine-grained, scoped to this repo only,
+      # with Contents+PullRequests+Issues = read/write.
       - uses: googleapis/release-please-action@5c625bfb5d1ff62eadeeb3772007f7f66fdcf071 # v4
         id: release
         with:
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
           config-file: .release-please-config.json
           manifest-file: .release-please-manifest.json

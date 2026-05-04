@@ -213,11 +213,14 @@ publishing {
 // Sign the published artifacts with our GPG key. Skipped silently when
 // SIGNING_KEY isn't in the environment so local `publishToMavenLocal`
 // invocations don't require GPG configured. CI sets both env vars from
-// repo secrets.
+// repo secrets. `isNullOrBlank` (not just `!= null`) because an empty
+// secret is still a non-null env var, and useInMemoryPgpKeys(key, "")
+// then fails inside the signing task with the unhelpful
+// "Cannot query the value of this provider because it has no value available".
 signing {
-    val signingKey: String? = providers.environmentVariable("SIGNING_KEY").orNull
-    val signingPassword: String? = providers.environmentVariable("SIGNING_PASSWORD").orNull
-    if (signingKey != null && signingPassword != null) {
+    val signingKey = providers.environmentVariable("SIGNING_KEY").orNull
+    val signingPassword = providers.environmentVariable("SIGNING_PASSWORD").orNull
+    if (!signingKey.isNullOrBlank() && !signingPassword.isNullOrBlank()) {
         useInMemoryPgpKeys(signingKey, signingPassword)
         sign(publishing.publications["nativeBinary"])
     }
