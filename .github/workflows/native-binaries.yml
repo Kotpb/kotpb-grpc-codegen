@@ -103,8 +103,15 @@ jobs:
         shell: bash
         # extra-build-args may be empty; the Gradle config filters blanks, so
         # passing an empty -P value is a no-op and we don't need a conditional.
+        # shadowJar is only built on linux-x86_64 because the JAR is a pure-JVM
+        # artifact whose contents are byte-identical regardless of host OS;
+        # building it once avoids 4× duplicated work and 4× upload churn.
         run: |
-          ./gradlew :plugin:nativeCompile :plugin:installDist --no-daemon \
+          tasks=":plugin:nativeCompile :plugin:installDist"
+          if [[ "${{ matrix.classifier }}" == "linux-x86_64" ]]; then
+            tasks="$tasks :plugin:shadowJar"
+          fi
+          ./gradlew $tasks --no-daemon \
             -PextraNativeBuildArgs="${{ matrix.extra-build-args }}"
 
       - name: Set up protoc
@@ -153,6 +160,32 @@ jobs:
           fi
           echo "Smoke test passed on ${{ matrix.classifier }}: native ≡ JVM."
 
+          # Extra check on linux-x86_64 (the only job that builds shadowJar):
+          # the fat JAR's output must also match. Catches shadowing-time
+          # regressions like service-loader files getting mismerged or
+          # resources stripped, and protects the published `:jvm@jar`
+          # classifier from drifting away from the rest of the publication.
+          if [[ "${{ matrix.classifier }}" == "linux-x86_64" ]]; then
+            shadow_jar=$(ls "$PWD/plugin/build/libs/kotpb-grpc-codegen-"*"-jvm.jar")
+            shadow_out="$PWD/smoke-shadow"
+            rm -rf "$shadow_out"; mkdir -p "$shadow_out"
+            shadow_script="$PWD/run-shadow.sh"
+            # Build the wrapper without a heredoc so YAML indentation can't
+            # leak into the file content and break the shebang.
+            printf '#!/usr/bin/env bash\nexec java -jar "%s" "$@"\n' "$shadow_jar" > "$shadow_script"
+            chmod +x "$shadow_script"
+            protoc --plugin=protoc-gen-grpc-kotlin="$shadow_script" \
+                   --grpc-kotlin_out="$shadow_out" \
+                   -I "$fixture_dir" "$fixture"
+            test -f "$shadow_out/$rel" || { echo "FAIL: shadow JAR produced no $rel"; exit 1; }
+            if ! diff -u "$jvm_out/$rel" "$shadow_out/$rel"; then
+              echo "FAIL: shadow JAR output diverges from JVM dist output"
+              exit 1
+            fi
+            echo "Shadow JAR smoke test passed: shadowJar ≡ JVM dist ≡ native."
+            rm "$shadow_script"
+          fi
+
       # Stage the binary using the Maven artifact naming convention --
       #   kotpb-grpc-codegen-<version>-<classifier>.exe
       # -- so consumers pulling from a Maven repo (or downloading from a
@@ -182,6 +215,19 @@ jobs:
         with:
           name: kotpb-grpc-codegen-${{ matrix.classifier }}
           path: out/*
+          if-no-files-found: error
+
+      # The shadowJar's archiveBaseName + archiveClassifier already produce
+      # plugin/build/libs/kotpb-grpc-codegen-<version>-jvm.jar in the exact
+      # naming aggregate-mode expects, so we just upload it under a matching
+      # artifact name. Only the linux-x86_64 job uploads it (JAR contents are
+      # platform-independent; see the build step's comment).
+      - name: Upload JVM-fallback JAR
+        if: matrix.classifier == 'linux-x86_64'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: kotpb-grpc-codegen-jvm
+          path: plugin/build/libs/kotpb-grpc-codegen-${{ steps.ver.outputs.version }}-jvm.jar
           if-no-files-found: error
 
   release:

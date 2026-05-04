@@ -58,6 +58,14 @@ dependencies {
 `protobuf-gradle-plugin` auto-resolves the matching native classifier for your
 host OS / arch. **No JVM is required at codegen time on the consumer side.**
 
+If you're on a platform we don't ship a native binary for (e.g. FreeBSD,
+linux-riscv64, alpine-aarch64), use the JVM fallback instead — same publication,
+classifier `jvm`, runs on any JDK 17+:
+
+```kotlin
+artifact = "io.github.kotpb:kotpb-grpc-codegen:<version>:jvm@jar"
+```
+
 ## Runtime requirements
 
 What a consumer project compiling and running the generated Kotlin code needs.
@@ -285,12 +293,13 @@ prerequisites still apply:
 builds binaries for four targets, attaching them to the matching GitHub
 Release. The same workflow can be triggered manually from the Actions tab.
 
-| Classifier       | Runner             | Linkage                           |
-| ---------------- | ------------------ | --------------------------------- |
-| `linux-x86_64`   | `ubuntu-latest`    | static (musl)                     |
-| `linux-aarch_64` | `ubuntu-24.04-arm` | mostly-static (glibc dynamic)     |
-| `osx-aarch_64`   | `macos-latest`     | dynamic (libSystem, Apple Silicon)|
-| `windows-x86_64` | `windows-latest`   | dynamic (msvcrt)                  |
+| Classifier       | Extension | Runner             | Linkage / runtime                            |
+| ---------------- | --------- | ------------------ | -------------------------------------------- |
+| `linux-x86_64`   | `exe`     | `ubuntu-latest`    | static (musl)                                |
+| `linux-aarch_64` | `exe`     | `ubuntu-24.04-arm` | mostly-static (glibc dynamic)                |
+| `osx-aarch_64`   | `exe`     | `macos-latest`     | dynamic (libSystem, Apple Silicon)           |
+| `windows-x86_64` | `exe`     | `windows-latest`   | dynamic (msvcrt)                             |
+| `jvm`            | `jar`     | `ubuntu-latest`    | shaded fat-JAR; runs on any JDK 17+ host     |
 
 `linux-x86_64` is fully musl-static (`--static --libc=musl`) and runs in
 alpine / distroless. `linux-aarch_64` is mostly-static
@@ -303,8 +312,16 @@ and `gcr.io/distroless/base`, just not `alpine:aarch64`.
 No `osx-x86_64` classifier is published: GitHub-hosted `macos-13` (Intel)
 runners are being phased out (`macos-12` retired Dec 2024) and the queue
 is chronically empty. Intel Mac users — rare in 2026 since Apple has
-shipped only Apple Silicon since 2020 — fall back to the JVM dist via
-`:plugin:installDist`.
+shipped only Apple Silicon since 2020 — use the `jvm` classifier instead.
+
+The `jvm` classifier is a shaded fat-JAR with `Main-Class` set, so it runs
+under `java -jar` directly — `protobuf-gradle-plugin` recognises the `@jar`
+extension on a classifier'd artifact and wraps it accordingly, mirroring the
+upstream `io.grpc:protoc-gen-grpc-kotlin:VERSION:jdk8@jar` shape. Built once
+(on the linux-x86_64 runner, since the JAR's contents are platform-independent)
+and the same byte-for-byte output check the native binaries face is also
+applied to the fat-JAR's protoc output, so all five artifacts are kept in
+lockstep.
 
 Each produced binary is **smoke-tested in CI** before upload by generating
 the same `.proto` through both the native binary and the JVM-mode plugin and
@@ -326,11 +343,13 @@ output than the JVM build fails the workflow and is never published.
 | `-R:MaxHeapSize=128m`                       | Cap at 128 MiB; the default is 80 % of physical RAM, wasteful for a one-shot CLI.                                                                                                             |
 | `-H:+ReportExceptionStackTraces`            | Better diagnostics if reflection-shaped issues surface.                                                                                                                                       |
 
-### Consuming the native binary as a protoc plugin
+### Consuming the plugin
 
-The native binaries are published with **classifier-per-platform** Maven
-naming, the same shape `protoc-gen-grpc-java` uses, so they're consumable
-directly from `protobuf-gradle-plugin`:
+The artifacts are published with **classifier-per-platform** Maven naming,
+the same shape `protoc-gen-grpc-java` uses, so they're consumable directly
+from `protobuf-gradle-plugin`. The default form auto-resolves the matching
+native classifier for the host OS / arch — no JVM required on the consumer
+side:
 
 ```kotlin
 protobuf {
@@ -342,9 +361,12 @@ protobuf {
 }
 ```
 
-`protobuf-gradle-plugin` auto-resolves the matching classifier for the host
-OS / arch and runs the binary as a `--plugin=` to protoc — no JVM required
-on the consumer side.
+For platforms we don't ship a native binary for, switch to the `jvm`
+classifier — runs anywhere a JDK 17+ is on `PATH`:
+
+```kotlin
+artifact = "io.github.kotpb:kotpb-grpc-codegen:<version>:jvm@jar"
+```
 
 For local integration testing before a release is published:
 

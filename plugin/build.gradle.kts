@@ -2,6 +2,7 @@ plugins {
     id("kotpb.kotlin-conventions")
     application
     alias(libs.plugins.graalvm.native)
+    alias(libs.plugins.shadow)
     `maven-publish`
     signing
 }
@@ -91,6 +92,26 @@ graalvmNative {
     }
 }
 
+// Shadow JAR — JVM fallback for unsupported native classifiers.
+//
+// Build with: ./gradlew :plugin:shadowJar
+// Output:     plugin/build/libs/kotpb-grpc-codegen-<version>-jvm.jar
+//
+// Self-contained: shades every runtime dep (KotlinPoet, kotlin-stdlib,
+// kotlinx-coroutines, protobuf-java, …) into a single executable JAR so
+// the published Maven POM doesn't have to declare any of them. The
+// `application` plugin's main class is auto-picked up via the manifest's
+// Main-Class attribute, so `java -jar <this>` runs the plugin directly —
+// which is exactly what protobuf-gradle-plugin does when it sees `@jar`
+// on the classifier'd artifact, mirroring how upstream
+// `io.grpc:protoc-gen-grpc-kotlin:VERSION:jdk8@jar` works.
+tasks.shadowJar {
+    archiveBaseName.set("kotpb-grpc-codegen")
+    archiveClassifier.set("jvm")
+    // No archiveVersion override: defaults to project.version (correct).
+    mergeServiceFiles()
+}
+
 // -------------------------------------------------------------------
 // Maven publication: native binary as classifier artifact
 // -------------------------------------------------------------------
@@ -135,13 +156,17 @@ publishing {
             //   single — each per-platform CI job builds and publishes its
             //     classifier (used by mavenLocal smoke tests; pass
             //     -PnativeBinaryFile=... -PnativeBinaryClassifier=...).
+            //     Optionally pair with -PjvmJarFile=... to also include the
+            //     classifier=jvm fallback in the same publication.
             //   aggregate — the publish-maven-central CI job downloads every
-            //     classifier .exe and publishes them in ONE Gradle invocation
-            //     so the gradle-nexus-publish-plugin batches them into a
-            //     single Sonatype Central deployment that close+release can
-            //     finalize atomically (pass -PnativeBinariesDir=...).
+            //     classifier .exe + the jvm.jar and publishes them in ONE
+            //     Gradle invocation so the gradle-nexus-publish-plugin batches
+            //     them into a single Sonatype Central deployment that
+            //     close+release can finalize atomically
+            //     (pass -PnativeBinariesDir=...).
             val singleFile = project.findProperty("nativeBinaryFile") as? String
             val singleClassifier = project.findProperty("nativeBinaryClassifier") as? String
+            val singleJvmJar = project.findProperty("jvmJarFile") as? String
             val aggregateDir = project.findProperty("nativeBinariesDir") as? String
             check(
                 ((singleFile == null) == (singleClassifier == null)) &&
@@ -156,6 +181,12 @@ publishing {
                     extension = "exe" // Maven convention for protoc plugins, even on Unix.
                 }
             }
+            if (singleJvmJar != null) {
+                artifact(file(singleJvmJar)) {
+                    classifier = "jvm"
+                    extension = "jar"
+                }
+            }
             if (aggregateDir != null) {
                 val ver = project.version.toString()
                 listOf("linux-x86_64", "linux-aarch_64", "osx-aarch_64", "windows-x86_64").forEach { cls ->
@@ -166,13 +197,22 @@ publishing {
                         extension = "exe"
                     }
                 }
+                // JVM fallback — built only on linux-x86_64 (the JAR's
+                // contents are platform-independent).
+                val jvmJar = file("$aggregateDir/kotpb-grpc-codegen-$ver-jvm.jar")
+                check(jvmJar.exists()) { "expected JVM fallback jar at $jvmJar (was shadowJar uploaded?)" }
+                artifact(jvmJar) {
+                    classifier = "jvm"
+                    extension = "jar"
+                }
             }
 
             pom {
-                name.set("kotpb-grpc-codegen (native)")
+                name.set("kotpb-grpc-codegen")
                 description.set(
                     "Pure-Kotlin protoc plugin for gRPC Kotlin coroutine stubs. " +
-                        "Native binary; runs without a JVM."
+                        "Ships per-platform native binaries (no JVM required) " +
+                        "and a classifier=jvm fat-JAR fallback for unsupported platforms."
                 )
                 url.set("https://github.com/Kotpb/kotpb-grpc-codegen")
                 licenses {

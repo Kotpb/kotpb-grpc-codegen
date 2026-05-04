@@ -52,7 +52,8 @@ drop-in compatible.
 ./gradlew :generator:test                         # generator unit tests
 ./gradlew :e2e-tests:test                         # protoc + RPC
 ./gradlew :e2e-tests:test --tests *NameCollisionsTest*   # narrow to one fixture
-./gradlew :plugin:installDist                     # JVM dist
+./gradlew :plugin:installDist                     # JVM dist (launcher script + lib jars)
+./gradlew :plugin:shadowJar                       # JVM fat-jar (single file, classifier=jvm)
 ./gradlew :plugin:nativeCompile                   # native binary (needs GraalVM)
 ./gradlew :plugin:publishNativeBinaryPublicationToMavenLocal `
     -PnativeBinaryFile=plugin/build/native/nativeCompile/protoc-gen-grpc-kotlin `
@@ -116,23 +117,33 @@ drop-in compatible.
 
 ## Native binary distribution
 
-`.github/workflows/native-binaries.yml` builds 4 classifier-per-platform
-binaries on every `v*` tag (or workflow_dispatch):
+`.github/workflows/native-binaries.yml` builds 5 classifiers under one
+publication on every `v*` tag (or workflow_dispatch) — 4 native + 1 JVM:
 
-- `linux-x86_64` — musl-static (no glibc dependency, runs on alpine/distroless)
-- `linux-aarch_64` — mostly-static (`-H:+StaticExecutableWithDynamicLibC`):
+- `linux-x86_64` (`.exe`) — musl-static (no glibc dependency, runs on alpine/distroless)
+- `linux-aarch_64` (`.exe`) — mostly-static (`-H:+StaticExecutableWithDynamicLibC`):
   GraalVM runtime statically linked, libc stays dynamic against glibc.
   Runs on every mainstream aarch64 distro and `gcr.io/distroless/base`,
   but **not** alpine:aarch64. GraalVM CE doesn't ship static musl libs
   for linux-aarch64 (oracle/graal#4645, #10018 — both closed "not planned"),
   so musl-static aarch64 isn't achievable with our current toolchain.
-- `osx-aarch_64` — dynamic against libSystem (Apple Silicon)
-- `windows-x86_64` — dynamic against msvcrt
+- `osx-aarch_64` (`.exe`) — dynamic against libSystem (Apple Silicon)
+- `windows-x86_64` (`.exe`) — dynamic against msvcrt
+- `jvm` (`.jar`) — shaded fat-JAR via the `com.gradleup.shadow` plugin's
+  `shadowJar` task. `Main-Class: io.github.kotpb.plugin.MainKt` set, all
+  runtime deps shaded inside, POM declares zero dependencies.
+  `protobuf-gradle-plugin` recognises `@jar` on a classifier'd artifact
+  and wraps it with `java -jar`, so consumers consume it identically to
+  the native classifiers — `artifact = "...:jvm@jar"`. Built once on the
+  linux-x86_64 runner since the JAR's contents are platform-independent;
+  uploaded as the `kotpb-grpc-codegen-jvm` artifact and merged into
+  `native-binaries/` alongside the .exe files at publish time. Mirrors
+  upstream's `io.grpc:protoc-gen-grpc-kotlin:VERSION:jdk8@jar` shape.
 
 No `osx-x86_64` classifier: GitHub-hosted `macos-13` (Intel) runners are
 being phased out (`macos-12` retired Dec 2024). Intel Mac users — rare in
-2026 since Apple has shipped only Apple Silicon since 2020 — fall back to
-the JVM dist via `:plugin:installDist`.
+2026 since Apple has shipped only Apple Silicon since 2020 — use the
+`jvm` classifier instead.
 
 ## Release process
 
@@ -166,8 +177,9 @@ prerequisite.
 4. release-please tags `vX.Y.Z` and creates the GitHub Release.
 5. The tag push fires `.github/workflows/native-binaries.yml`:
    - `build` matrix produces the 4 classifier-per-platform binaries
+     plus the `jvm` shadow JAR (built only on linux-x86_64)
    - `release` job attaches them to the GitHub Release
-   - `publish-maven-central` job downloads all 4, runs ONE Gradle
+   - `publish-maven-central` job downloads all 5, runs ONE Gradle
      publish (aggregate-mode via `-PnativeBinariesDir=...`) so the
      gradle-nexus-publish-plugin batches them into a single Sonatype
      Central deployment, then `closeAndReleaseSonatypeStagingRepository`
@@ -211,13 +223,15 @@ variable or just don't push tags until secrets exist.
 ### Local smoke test
 
 ```powershell
-./gradlew :plugin:nativeCompile
+./gradlew :plugin:nativeCompile :plugin:shadowJar
 ./gradlew :plugin:publishNativeBinaryPublicationToMavenLocal `
     -PnativeBinaryFile="$pwd/plugin/build/native/nativeCompile/protoc-gen-grpc-kotlin.exe" `
-    -PnativeBinaryClassifier=windows-x86_64
-ls ~/.m2/repository/io/github/kotpb/kotpb-grpc-codegen/0.1.0/
-# expect: kotpb-grpc-codegen-0.1.0.pom
-#         kotpb-grpc-codegen-0.1.0-windows-x86_64.exe
+    -PnativeBinaryClassifier=windows-x86_64 `
+    -PjvmJarFile="$pwd/plugin/build/libs/kotpb-grpc-codegen-<version>-jvm.jar"
+ls ~/.m2/repository/io/github/kotpb/kotpb-grpc-codegen/<version>/
+# expect: kotpb-grpc-codegen-<version>.pom
+#         kotpb-grpc-codegen-<version>-windows-x86_64.exe
+#         kotpb-grpc-codegen-<version>-jvm.jar
 #         (.asc files only when SIGNING_KEY is set)
 ```
 
@@ -234,8 +248,9 @@ The publish-maven-central job downloads every classifier .exe into
 
 `-PnativeBinariesDir=...` switches the publishing block from
 "single classifier" mode (used by `mavenLocal` smoke) to "aggregate"
-mode where all 4 classifiers share one `MavenPublication` and therefore
-one Sonatype Central deployment. See `plugin/build.gradle.kts:139-160`.
+mode where all 5 classifiers (4 native + jvm jar) share one
+`MavenPublication` and therefore one Sonatype Central deployment.
+See `plugin/build.gradle.kts:139-160`.
 
 Smoke test in CI: native binary's output is `diff`'d byte-for-byte against
 the JVM dist's output for the same `.proto`. Any divergence is a
