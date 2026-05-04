@@ -6,6 +6,7 @@
       "package-name": "kotpb-grpc-codegen",
       "include-component-in-tag": false,
       "tag-separator": "v",
+      "pull-request-title-pattern": "chore${scope}: Release${component} ${version}",
       "extra-files": [
         { "type": "generic", "path": "gradle.properties" }
       ],
