@@ -45,14 +45,13 @@ graalvmNative {
             // initialize at run time) aren't affected.
             "--link-at-build-time=io.github.kotpb",
 
-            // Optimize for size (`-Os`), not runtime speed (`-O3`). The
-            // plugin invocation is tiny (a few seconds, dominated by I/O
-            // and one-shot KotlinPoet emission), so `-O3`'s larger code
-            // and heavier inlining buy almost no real win here while
-            // bloating the binary by ~20-30%. Build-time tools shipped
-            // through Maven Central and downloaded per-machine should
-            // optimize for download size first.
-            "-Os",
+            // Speed-of-execution tier; native-image build itself takes longer
+            // but the plugin runs once per protoc invocation so the runtime
+            // win compounds across builds.
+            // (Aside: the size-optimized `-Os` would shrink the binary
+            // ~20-30%, but it requires GraalVM 23+ and we're on 21. A
+            // separate PR can bump GraalVM and switch to -Os.)
+            "-O3",
 
             // Explicit "broad CPU compatibility" — never `native`, since the
             // produced binary is shipped to other machines.
