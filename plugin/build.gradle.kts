@@ -64,6 +64,15 @@ graalvmNative {
 
             // Better diagnostics if anything reflection-shaped breaks.
             "-H:+ReportExceptionStackTraces",
+
+            // No-op GC: the plugin runs ~1s per protoc invocation and
+            // exits, so nothing is ever freed anyway and the GC machinery
+            // is dead weight in the binary. Heap is capped at 128 MiB
+            // (-R:MaxHeapSize above) which is plenty for KotlinPoet's
+            // intermediate buffers; if we ever exceeded it, we'd see
+            // OOM rather than degraded perf — and that's the right
+            // failure mode for a CLI plugin.
+            "--gc=epsilon",
         )
 
         // Per-platform extras passed in by CI (e.g. `--static --libc=musl`
