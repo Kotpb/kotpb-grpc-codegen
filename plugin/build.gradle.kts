@@ -45,13 +45,13 @@ graalvmNative {
             // initialize at run time) aren't affected.
             "--link-at-build-time=io.github.kotpb",
 
-            // Speed-of-execution tier; native-image build itself takes longer
-            // but the plugin runs once per protoc invocation so the runtime
-            // win compounds across builds.
-            // (Aside: the size-optimized `-Os` would shrink the binary
-            // ~20-30%, but it requires GraalVM 23+ and we're on 21. A
-            // separate PR can bump GraalVM and switch to -Os.)
-            "-O3",
+            // Optimize for size, not for runtime micro-wins. The plugin
+            // runs ~1 second per protoc invocation, dominated by I/O and
+            // one-shot KotlinPoet emission, so `-O3`'s extra inlining
+            // bought almost nothing while bloating the binary 20-30%.
+            // `-Os` is a GraalVM 23+ flag — see the `java-version` bump
+            // to 25 in native-binaries.yml.
+            "-Os",
 
             // Explicit "broad CPU compatibility" — never `native`, since the
             // produced binary is shipped to other machines.
@@ -75,11 +75,14 @@ graalvmNative {
             .orEmpty()
         if (extraArgs.isNotEmpty()) buildArgs.addAll(extraArgs)
 
-        // Use a GraalVM JDK 21 launcher specifically for native-image,
-        // independent of the project's regular toolchain.
+        // Use a GraalVM JDK 25 launcher specifically for native-image,
+        // independent of the project's regular toolchain. JDK 25 is the
+        // current GraalVM LTS and unlocks `-Os` (size-optimized native
+        // image, available since GraalVM 23). Locally CI has the same
+        // pin in `.github/workflows/native-binaries.yml`.
         javaLauncher.set(
             javaToolchains.launcherFor {
-                languageVersion.set(JavaLanguageVersion.of(21))
+                languageVersion.set(JavaLanguageVersion.of(25))
                 vendor.set(JvmVendorSpec.GRAAL_VM)
             }
         )

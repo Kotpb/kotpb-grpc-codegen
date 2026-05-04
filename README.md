@@ -277,7 +277,7 @@ invocations on machines that don't have Java set up.
 ./gradlew :plugin:nativeCompile
 ```
 
-GraalVM JDK 21 itself is downloaded automatically by Gradle's foojay
+GraalVM JDK 25 itself is downloaded automatically by Gradle's foojay
 toolchain resolver — no separate install required. Per-platform OS toolchain
 prerequisites still apply:
 
