@@ -45,10 +45,14 @@ graalvmNative {
             // initialize at run time) aren't affected.
             "--link-at-build-time=io.github.kotpb",
 
-            // Speed-of-execution tier; native-image build itself takes longer
-            // but the plugin runs once per protoc invocation so the runtime
-            // win compounds across builds.
-            "-O3",
+            // Optimize for size (`-Os`), not runtime speed (`-O3`). The
+            // plugin invocation is tiny (a few seconds, dominated by I/O
+            // and one-shot KotlinPoet emission), so `-O3`'s larger code
+            // and heavier inlining buy almost no real win here while
+            // bloating the binary by ~20-30%. Build-time tools shipped
+            // through Maven Central and downloaded per-machine should
+            // optimize for download size first.
+            "-Os",
 
             // Explicit "broad CPU compatibility" — never `native`, since the
             // produced binary is shipped to other machines.
@@ -110,6 +114,22 @@ tasks.shadowJar {
     archiveClassifier.set("jvm")
     // No archiveVersion override: defaults to project.version (correct).
     mergeServiceFiles()
+
+    // Tree-shake unused classes from shaded deps. The codegen reaches a
+    // tiny slice of protobuf-java + kotlinpoet + kotlin-stdlib; the rest
+    // is dead weight. minimize() walks reachability from the Main-Class
+    // and drops anything unreached. The CI smoke test (shadowJar output
+    // == JVM dist output, byte-for-byte) catches over-minimization.
+    minimize {
+        // protobuf-java loads concrete Message classes via reflection at
+        // descriptor-resolution time; tree-shaking them from a static call
+        // graph misses the reflection edge and would NPE at runtime.
+        // Keep all of protobuf-java and protobuf-kotlin whole; the rest
+        // (KotlinPoet, kotlin-stdlib, kotlin-reflect) only uses
+        // statically-resolvable references and minimizes safely.
+        exclude(dependency("com.google.protobuf:protobuf-java:.*"))
+        exclude(dependency("com.google.protobuf:protobuf-kotlin:.*"))
+    }
 }
 
 // -------------------------------------------------------------------
