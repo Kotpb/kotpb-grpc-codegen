@@ -284,6 +284,32 @@ jobs:
             exit 1
           fi
 
+          # Diagnostic: show the structure of SIGNING_KEY (which keys are
+          # in the block, capabilities flags, and crucially whether the
+          # master is a stub `sec#` or has private material `sec`). The
+          # signing task fails with "no value available" when extractPrivateKey
+          # returns null — which happens when the first key in the ring (the
+          # master) is a stub or certify-only. The output here tells us
+          # exactly which case we're in. Self-test: also try gpg-signing a
+          # tiny payload — succeeds iff the chosen key has signing
+          # capability + extractable private bytes.
+          echo "::group::SIGNING_KEY structure"
+          export GNUPGHOME=$(mktemp -d)
+          chmod 700 "$GNUPGHOME"
+          echo "$SIGNING_KEY" | gpg --batch --import 2>&1 || true
+          gpg --list-secret-keys --keyid-format=long --with-fingerprint || true
+          echo
+          echo "--- self-test: detach-sign a payload ---"
+          if echo "test" | gpg --batch --pinentry-mode loopback \
+              --passphrase "$SIGNING_PASSWORD" --armor --detach-sign 2>&1 | head -5; then
+            echo "(gpg signing succeeded)"
+          else
+            echo "(gpg signing FAILED — same root cause Gradle is hitting)"
+          fi
+          rm -rf "$GNUPGHOME"
+          unset GNUPGHOME
+          echo "::endgroup::"
+
           ./gradlew :plugin:publishNativeBinaryPublicationToSonatypeRepository \
             closeAndReleaseSonatypeStagingRepository \
             -PnativeBinariesDir="$PWD/native-binaries" --no-daemon --stacktrace
