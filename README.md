@@ -21,7 +21,7 @@ Supports proto2, proto3, edition 2023, and edition 2024.
 - [Service descriptor accessors](#service-descriptor-accessors)
 - [Editions support](#editions-support)
 - [JVM-less native binary (GraalVM)](#jvm-less-native-binary-graalvm)
-- [Maven Central publishing (TODO)](#maven-central-publishing-todo-for-the-maintainer)
+- [Releases & versioning](#releases--versioning)
 
 ## Quick start (consumer)
 
@@ -393,7 +393,7 @@ The release process:
 2. release-please maintains an open `chore(main): release vX.Y.Z` PR on the
    repo showing the proposed version + CHANGELOG diff.
 3. Merging that PR is the manual release trigger — it tags `vX.Y.Z`, creates
-   the GitHub Release, and (with secrets configured) publishes to Maven Central.
+   the GitHub Release, and publishes to Maven Central.
 
 CHANGELOG is at [`CHANGELOG.md`](CHANGELOG.md).
 
@@ -412,11 +412,5 @@ protobuf {
 ```
 
 `protobuf-gradle-plugin` auto-resolves the matching classifier for the host
-OS / arch — see "Consuming the native binary as a protoc plugin" above.
-
-Maven Central setup is documented for maintainers in
-[CLAUDE.md → Release process → One-time maintainer setup](CLAUDE.md). It
-requires (one-time): claim the `io.github.kotpb` namespace at
-[central.sonatype.com](https://central.sonatype.com), generate a GPG key,
-and set the `SONATYPE_USERNAME` / `SONATYPE_PASSWORD` / `SIGNING_KEY` /
-`SIGNING_PASSWORD` repo secrets.
+OS / arch — see "Consuming the plugin" above. Published artifacts are at
+<https://central.sonatype.com/artifact/io.github.kotpb/kotpb-grpc-codegen>.

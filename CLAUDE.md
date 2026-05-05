@@ -99,10 +99,11 @@ drop-in compatible.
   `.proto`s: absolute qualifiers like `.collision.Collision`.
 - **`java_multiple_files = true` is removed in edition 2024.** Setting it
   there is a protoc error. Our `DescriptorUtil.isJavaMultipleFiles` knows.
-- **GraalVM external Reachability Metadata Repository** has a schema that
-  the foojay-provided `graalvm-community 21.0.2` can't read. Keep the
-  in-Gradle `metadataRepository.enabled = false`. protobuf-java embeds its
-  own metadata so we don't need the external repo.
+- **GraalVM external Reachability Metadata Repository is disabled** —
+  protobuf-java embeds its own `META-INF/native-image/` metadata and
+  KotlinPoet does no reflection, so the external repo adds zero value
+  while bringing schema-compatibility risk on every GraalVM bump. Keep
+  `metadataRepository.enabled = false`.
 - **Native binary on Windows** needs Visual Studio MSVC. CI uses
   `ilammy/msvc-dev-cmd@v1`; locally users need Build Tools.
 
@@ -144,6 +145,24 @@ No `osx-x86_64` classifier: GitHub-hosted `macos-13` (Intel) runners are
 being phased out (`macos-12` retired Dec 2024). Intel Mac users — rare in
 2026 since Apple has shipped only Apple Silicon since 2020 — use the
 `jvm` classifier instead.
+
+## Branch protection
+
+`main` is protected. **Direct pushes are blocked** — every change must
+land via a PR + squash-merge. The protection rules:
+
+- Pull request required (0 approvals — solo merger is fine).
+- Status checks required: `build + test (linux-x86_64)` (the CI build),
+  `lint` (the Conventional-Commits PR-title check).
+- Branches must be up-to-date with main before merging (`strict: true`).
+- Linear history enforced (squash-merge already does this; this is the
+  belt-and-braces lock).
+- Force pushes blocked. Branch deletion blocked.
+- Conversation resolution required before merge.
+- Admins are NOT enforced (`enforce_admins: false`) — admins can disable
+  protection temporarily for emergencies, but must re-enable.
+
+Configured via `gh api -X PUT repos/Kotpb/kotpb-grpc-codegen/branches/main/protection`.
 
 ## Release process
 
@@ -187,39 +206,6 @@ prerequisite.
 6. Within ~5 min, artifacts are visible at
    `https://central.sonatype.com/artifact/io.github.kotpb/kotpb-grpc-codegen`.
 
-### One-time maintainer setup (do before the first release)
-
-These steps gate the Maven Central side; the GitHub Release side works
-without them.
-
-1. **Claim the namespace** at <https://central.sonatype.com> →
-   "Add Namespace" → `io.github.kotpb`. Auto-verified via the GitHub
-   OAuth proof when the org name matches.
-2. **Generate a GPG key** for signing:
-   ```sh
-   gpg --full-generate-key      # RSA 4096, no expiry or 2y
-   gpg --list-secret-keys --keyid-format=long
-   gpg --armor --export-secret-keys <KEY-ID>     # → SIGNING_KEY value
-   gpg --keyserver keys.openpgp.org --send-keys <KEY-ID>
-   gpg --keyserver keyserver.ubuntu.com --send-keys <KEY-ID>
-   ```
-3. **Generate a Sonatype Central user token**:
-   central.sonatype.com → account dropdown → "View Account" →
-   "Generate User Token" → record `username` + `password`.
-4. **Set GitHub repo secrets**:
-   ```sh
-   gh secret set SONATYPE_USERNAME --repo Kotpb/kotpb-grpc-codegen
-   gh secret set SONATYPE_PASSWORD --repo Kotpb/kotpb-grpc-codegen
-   gh secret set SIGNING_KEY      --repo Kotpb/kotpb-grpc-codegen
-   gh secret set SIGNING_PASSWORD --repo Kotpb/kotpb-grpc-codegen
-   ```
-
-The `SIGNING_KEY` value is the entire `-----BEGIN PGP PRIVATE KEY BLOCK-----`
-block produced by `gpg --armor --export-secret-keys`. Without these
-secrets, the publish job would still attempt to run on tag-push and fail —
-either gate the workflow on a `vars.MAVEN_CENTRAL_READY == 'true'` repo
-variable or just don't push tags until secrets exist.
-
 ### Local smoke test
 
 ```powershell
@@ -232,7 +218,6 @@ ls ~/.m2/repository/io/github/kotpb/kotpb-grpc-codegen/<version>/
 # expect: kotpb-grpc-codegen-<version>.pom
 #         kotpb-grpc-codegen-<version>-windows-x86_64.exe
 #         kotpb-grpc-codegen-<version>-jvm.jar
-#         (.asc files only when SIGNING_KEY is set)
 ```
 
 ### Aggregate-mode publishing flow (CI only)
@@ -252,8 +237,7 @@ mode where all 5 classifiers (4 native + jvm jar) share one
 `MavenPublication` and therefore one Sonatype Central deployment.
 See `plugin/build.gradle.kts:139-160`.
 
-Smoke test in CI: native binary's output is `diff`'d byte-for-byte against
-the JVM dist's output for the same `.proto`. Any divergence is a
-native-image regression and the workflow fails before upload. Maven Central
-publishing is wired but not active — needs maintainer to claim the
-`io.github.kotpb` namespace and add OSSRH/GPG secrets.
+Smoke test in CI: native binary, JVM dist, and shadow JAR each produce
+output that's `diff`'d byte-for-byte against the others for the same
+`.proto`. Any divergence is a regression and the workflow fails before
+upload.
