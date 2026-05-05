@@ -145,6 +145,24 @@ being phased out (`macos-12` retired Dec 2024). Intel Mac users — rare in
 2026 since Apple has shipped only Apple Silicon since 2020 — use the
 `jvm` classifier instead.
 
+## Branch protection
+
+`main` is protected. **Direct pushes are blocked** — every change must
+land via a PR + squash-merge. The protection rules:
+
+- Pull request required (0 approvals — solo merger is fine).
+- Status checks required: `build + test (linux-x86_64)` (the CI build),
+  `lint` (the Conventional-Commits PR-title check).
+- Branches must be up-to-date with main before merging (`strict: true`).
+- Linear history enforced (squash-merge already does this; this is the
+  belt-and-braces lock).
+- Force pushes blocked. Branch deletion blocked.
+- Conversation resolution required before merge.
+- Admins are NOT enforced (`enforce_admins: false`) — admins can disable
+  protection temporarily for emergencies, but must re-enable.
+
+Configured via `gh api -X PUT repos/Kotpb/kotpb-grpc-codegen/branches/main/protection`.
+
 ## Release process
 
 Versioning is automated by **release-please** (Google) driven by
