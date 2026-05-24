@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.2.1](https://github.com/Kotpb/kotpb-grpc-codegen/compare/v0.2.0...v0.2.1) (2026-05-24)
+
+
+### Documentation
+
+* Document branch protection + drop stale Maven Central setup ([#6](https://github.com/Kotpb/kotpb-grpc-codegen/issues/6)) ([ff6b9dd](https://github.com/Kotpb/kotpb-grpc-codegen/commit/ff6b9dd7cfa3e1753dbfc95aa9d5d4ed5873020b))
+
+
+### Build & CI
+
+* **deps:** Bump the gh-actions group with 2 updates ([#9](https://github.com/Kotpb/kotpb-grpc-codegen/issues/9)) ([633b63e](https://github.com/Kotpb/kotpb-grpc-codegen/commit/633b63ed069f9b514339b2ee66e7650d0e4d05a6))
+* **deps:** Bump the gradle-deps group across 1 directory with 5 updates ([#11](https://github.com/Kotpb/kotpb-grpc-codegen/issues/11)) ([3181139](https://github.com/Kotpb/kotpb-grpc-codegen/commit/31811399a22aca9e6e7d99c949f3ca0d95639b5f))
+* **deps:** Bump the gradle-deps group with 2 updates ([#8](https://github.com/Kotpb/kotpb-grpc-codegen/issues/8)) ([33566f7](https://github.com/Kotpb/kotpb-grpc-codegen/commit/33566f796a7e1740276281c0ad5c449b748de95c))
+
 ## [0.2.0](https://github.com/Kotpb/kotpb-grpc-codegen/compare/v0.1.1...v0.2.0) (2026-05-04)
 
 
