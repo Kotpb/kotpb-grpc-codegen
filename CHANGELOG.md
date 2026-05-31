@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.2](https://github.com/Kotpb/kotpb-grpc-codegen/compare/v0.2.1...v0.2.2) (2026-05-31)
+
+
+### Build & CI
+
+* **deps:** Bump the gradle-deps group with 2 updates ([#12](https://github.com/Kotpb/kotpb-grpc-codegen/issues/12)) ([a3745a2](https://github.com/Kotpb/kotpb-grpc-codegen/commit/a3745a20c94fc35be1fda9ec8fd60bc6e4b7e447))
+
 ## [0.2.1](https://github.com/Kotpb/kotpb-grpc-codegen/compare/v0.2.0...v0.2.1) (2026-05-24)
 
 
