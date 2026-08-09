@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.2](https://github.com/Kotpb/kotpb-grpc-codegen/compare/v0.2.1...v0.2.2) (2026-08-09)
+
+
+### Build & CI
+
+* **deps:** Bump the gh-actions group across 1 directory with 5 updates ([#20](https://github.com/Kotpb/kotpb-grpc-codegen/issues/20)) ([4fe4e18](https://github.com/Kotpb/kotpb-grpc-codegen/commit/4fe4e1858344e928a6e2a91a6c7b34c79730a358))
+* **deps:** Bump the gh-actions group across 1 directory with 5 updates ([#27](https://github.com/Kotpb/kotpb-grpc-codegen/issues/27)) ([e3ba266](https://github.com/Kotpb/kotpb-grpc-codegen/commit/e3ba266c1021de8dfaf1953cd46751e59488e8de))
+* **deps:** Bump the gradle-deps group across 1 directory with 6 updates ([#25](https://github.com/Kotpb/kotpb-grpc-codegen/issues/25)) ([38e3e6a](https://github.com/Kotpb/kotpb-grpc-codegen/commit/38e3e6a51662e6b600ee6d1a3cfc0aa2d06bcf45))
+* **deps:** Bump the gradle-deps group across 1 directory with 8 updates ([#19](https://github.com/Kotpb/kotpb-grpc-codegen/issues/19)) ([af91064](https://github.com/Kotpb/kotpb-grpc-codegen/commit/af91064f2965f54919c665410aa0c35f72039b93))
+* **deps:** Bump the gradle-deps group with 2 updates ([#12](https://github.com/Kotpb/kotpb-grpc-codegen/issues/12)) ([a3745a2](https://github.com/Kotpb/kotpb-grpc-codegen/commit/a3745a20c94fc35be1fda9ec8fd60bc6e4b7e447))
+* **deps:** Bump the gradle-deps group with 5 updates ([#21](https://github.com/Kotpb/kotpb-grpc-codegen/issues/21)) ([8ac446c](https://github.com/Kotpb/kotpb-grpc-codegen/commit/8ac446cf4f26b8a0cbddfb1535bff7047952c51a))
+
 ## [0.2.1](https://github.com/Kotpb/kotpb-grpc-codegen/compare/v0.2.0...v0.2.1) (2026-05-24)
 
 
