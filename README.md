@@ -1,15 +1,75 @@
-# kotpb-grpc-codegen (pure-Kotlin reimplementation of `protoc-gen-grpc-kotlin`)
+<p align="center">
+  <img src="docs/logos/logo.png" alt="kotpb logo" width="160"/>
+</p>
+
+# kotpb-grpc-codegen
+
+<p align="center">
+  <b>Pure-Kotlin reimplementation of <code>protoc-gen-grpc-kotlin</code>.</b><br>
+  Self-contained gRPC coroutine stubs & server bases with instant GraalVM native binary execution.
+</p>
+
+<p align="center">
+  <a href="https://github.com/Kotpb/kotpb-grpc-codegen/actions"><img src="https://img.shields.io/github/actions/workflow/status/Kotpb/kotpb-grpc-codegen/ci.yml?branch=main&label=CI" alt="CI Status"/></a> <a href="https://central.sonatype.com/artifact/io.github.kotpb/kotpb-grpc-codegen"><img src="https://img.shields.io/maven-central/v/io.github.kotpb/kotpb-grpc-codegen?color=blue" alt="Maven Central"/></a> <a href="LICENSE"><img src="https://img.shields.io/github/license/Kotpb/kotpb-grpc-codegen" alt="License"/></a> <img src="https://img.shields.io/badge/Kotlin-2.x-purple.svg" alt="Kotlin 2.x"/> <img src="https://img.shields.io/badge/Protobuf-Editions%202024-green.svg" alt="Protobuf Editions 2024"/> <img src="https://img.shields.io/badge/GraalVM-Native%20Image-orange.svg" alt="GraalVM Native Image"/>
+</p>
+
+---
 
 A protoc plugin (`protoc-gen-grpc-kotlin`) that generates Kotlin coroutine gRPC
 client stubs and server bases. Compatible with the existing
 `io.grpc:grpc-kotlin-stub` runtime, but unlike the upstream plugin, the generated
-code does **not** depend on `protoc-gen-grpc-java` output. Only `protoc-gen-java`
-(for messages) is required.
+code does **not** depend on `protoc-gen-grpc-java` output. Message classes can be
+generated using standard `protoc-gen-java`, Java + Kotlin plugins (`protoc-gen-kotlin`),
+or Java Lite (`protoc-gen-javalite`) — no specific message generation option is enforced.
 
 Supports proto2, proto3, edition 2023, and edition 2024.
 
+## Why kotpb-grpc-codegen?
+
+```mermaid
+graph TD
+    subgraph "Upstream grpc-kotlin"
+        P1[".proto"] --> J1["protoc-gen-java (+ optional protoc-gen-kotlin)"] --> M1["Messages (Java / Kotlin DSL)"]
+        P1 --> J2["protoc-gen-grpc-java"] --> G1["*Grpc.java Stubs"]
+        P1 --> K1["protoc-gen-grpc-kotlin (JVM jar)"] --> KT1["Kotlin Wrappers over Java Stubs"]
+        style G1 stroke-dasharray: 5 5
+    end
+
+    subgraph "kotpb-grpc-codegen"
+        P2[".proto"] --> J3["protoc-gen-java (+ optional protoc-gen-kotlin)"] --> M2["Messages (Java / Kotlin DSL)"]
+        P2 --> K2["kotpb-grpc-codegen (Native binary / JVM)"] --> KT2["Pure Kotlin Coroutine Stubs"]
+    end
+```
+
+| Feature | Upstream `grpc-kotlin` | `kotpb-grpc-codegen` |
+| :--- | :--- | :--- |
+| **Intermediate dependency** | Requires `protoc-gen-grpc-java` (`*Grpc` classes) | **None** (direct to `grpc-kotlin-stub`) |
+| **Distribution** | JVM fat-JAR only (`:jdk8@jar`) | **Native binaries** (Linux x86_64/aarch64, macOS aarch64, Windows x86_64) + JVM fallback |
+| **Codegen startup time** | JVM cold-start (~hundreds of ms / seconds) | **Instant (<10ms)** via GraalVM native binaries |
+| **Build setup** | Requires 2 gRPC plugins in Gradle (`grpc` + `grpckt`) | **1 plugin only** (`grpckt`) — no `grpc-java` plugin needed |
+| **Protobuf Editions** | Proto2 / Proto3 focused | **Full support for Edition 2023 & Edition 2024** (multi-file defaults, features) |
+| **Lite mode support** | Tied to full `grpc-protobuf` (`Message` bound) | **Dedicated `lite=true` mode** (`ProtoLiteUtils.marshaller` / `MessageLite`) |
+| **Descriptors & accessors** | Delegates to Java `*Grpc` descriptors | **Self-contained** lazy descriptors & `@JvmStatic` companion accessors on stub & impl |
+| **Comment preservation** | Fixed generic coroutine docstrings | Preserves `.proto` leading comments as rich KDoc (`comments=true`) |
+| **Plugin CLI options** | None (`--grpc-kotlin_opt` ignored) | **Full support** (`comments`, `lite`, `java_package=<pkg>`) |
+| **File-splitting** | Always single file per `.proto` (`<OuterClass>GrpcKt.kt`) | **Honors `java_multiple_files`** (`<Service>GrpcKt.kt` per service, automatic in Edition 2024) |
+
+## Benchmarks
+
+Measured using [Hyperfine](https://github.com/sharkdp/hyperfine) across `.proto` test fixtures of varying sizes, comparing `kotpb-grpc-codegen` (GraalVM native binary and JVM mode) against upstream `io.grpc:protoc-gen-grpc-kotlin` (which additionally requires running `protoc-gen-grpc-java`):
+
+| Test Suite | Upstream (`protoc-gen-grpc-java` + `protoc-gen-grpc-kotlin`) | `kotpb-grpc-codegen` (JVM) | `kotpb-grpc-codegen` (Native) | Native Speedup |
+| :--- | :---: | :---: | :---: | :---: |
+| **Small** (1 service, 5 RPCs) | 499.9 ms ± 44.8 ms | 491.1 ms ± 18.6 ms | **75.9 ms ± 15.7 ms** | **~6.6x faster** |
+| **Medium** (5 services, 25 RPCs) | 698.4 ms ± 60.7 ms | 661.3 ms ± 47.3 ms | **167.4 ms ± 8.9 ms** | **~4.2x faster** |
+| **Large** (10 services, 50 RPCs) | 1,393.2 ms ± 97.5 ms | 1,313.9 ms ± 123.5 ms | **792.8 ms ± 97.7 ms** | **~1.8x faster** |
+
+*Benchmarks run via `./gradlew :benchmark:bench` on AMD Ryzen 5 5600X (6C/12T @ 3.70 GHz), 32 GB RAM, Windows 10 Pro (x86_64). Native binaries eliminate JVM boot/warmup overhead on every `protoc` execution, providing near-instant code generation during build and CI pipelines.*
+
 ## Contents
 
+- [Why kotpb-grpc-codegen?](#why-kotpb-grpc-codegen)
+- [Benchmarks](#benchmarks)
 - [Quick start (consumer)](#quick-start-consumer)
 - [Runtime requirements](#runtime-requirements)
 - [Modules](#modules)
@@ -93,9 +153,10 @@ that should still resolve every symbol the generated code imports.
 | Artifact                                               | Tested with | Compatible since | Earliest symbol our code imports                                                     |
 | ------------------------------------------------------ | ----------- | ---------------- | ------------------------------------------------------------------------------------ |
 | `io.grpc:grpc-api`                                     | 1.81.0      | 1.26.0           | `Channel`, `CallOptions`, `MethodDescriptor`, … (predate the API split)              |
+| `io.grpc:grpc-stub`                                    | 1.81.0      | 1.0              | `BindableService`                                                                    |
 | `io.grpc:grpc-protobuf`                                | 1.81.0      | 1.0              | `ProtoUtils.marshaller`, `ProtoFileDescriptorSupplier`                               |
 | `io.grpc:grpc-protobuf-lite` _(only when `lite=true`)_ | 1.81.0      | 1.0              | `ProtoLiteUtils.marshaller`                                                          |
-| `io.grpc:grpc-kotlin-stub`                             | 1.4.3       | 1.0.0 (2020)     | `AbstractCoroutineStub`, `AbstractCoroutineServerImpl`, `ClientCalls`, `ServerCalls` |
+| `io.grpc:grpc-kotlin-stub`                             | 1.5.0       | 1.0.0 (2020)     | `AbstractCoroutineStub`, `AbstractCoroutineServerImpl`, `ClientCalls`, `ServerCalls` |
 | `com.google.protobuf:protobuf-java`                    | 4.34.1      | 3.x              | `Descriptors.FileDescriptor`, `<Message>.getDefaultInstance()`                       |
 | `org.jetbrains.kotlinx:kotlinx-coroutines-core`        | 1.10.2      | 1.3.0            | `kotlinx.coroutines.flow.Flow`                                                       |
 
@@ -333,15 +394,16 @@ output than the JVM build fails the workflow and is never published.
 
 ### Build-flag rationale
 
-| Flag                                        | Why                                                                                                                                                                                           |
-| ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--no-fallback`                             | Fail loudly instead of silently producing a slow JIT-fallback binary if reflection metadata is missing.                                                                                       |
-| `--strict-image-heap`                       | Future-default class-init mode; surfaces accidental run-time heap pollution at build time.                                                                                                    |
-| `--link-at-build-time=io.github.kotpb`      | Forces our own classes to fully link at build time; tiny startup win and catches missing-class errors at build. Scoped to our group so library deps still init at runtime where they need to. |
-| `-O3`                                       | Speed-of-execution tier; the plugin runs once per protoc build so runtime savings compound.                                                                                                   |
-| `-march=compatibility`                      | Broad CPU-arch compatibility (never `-march=native` since we ship the binary).                                                                                                                |
-| `-R:MaxHeapSize=128m`                       | Cap at 128 MiB; the default is 80 % of physical RAM, wasteful for a one-shot CLI.                                                                                                             |
-| `-H:+ReportExceptionStackTraces`            | Better diagnostics if reflection-shaped issues surface.                                                                                                                                       |
+| Flag                                        | Why                                                                                                                                                                                                                                                                     |
+| ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--no-fallback`                             | Fail loudly instead of silently producing a slow JIT-fallback binary if reflection metadata is missing.                                                                                                                                                                |
+| `--strict-image-heap`                       | Future-default class-init mode; surfaces accidental run-time heap pollution at build time.                                                                                                                                                                              |
+| `--link-at-build-time=io.github.kotpb`      | Forces our own classes to fully link at build time; tiny startup win and catches missing-class errors at build. Scoped to our group so library deps still init at runtime where they need to.                                                                          |
+| `-Os`                                       | Optimize for binary size, not runtime micro-wins. The plugin runs ~1s per protoc invocation (dominated by I/O and KotlinPoet emission); `-O3`'s extra inlining bought almost nothing while bloating the binary by 20–30%. `-Os` is supported on GraalVM 23+ (JDK 25). |
+| `-march=compatibility`                      | Broad CPU-arch compatibility (never `-march=native` since we ship the binary).                                                                                                                                                                                         |
+| `-R:MaxHeapSize=128m`                       | Cap at 128 MiB; the default is 80 % of physical RAM, wasteful for a one-shot CLI. Plenty of headroom for KotlinPoet's intermediate buffers.                                                                                                                           |
+| `-H:+ReportExceptionStackTraces`            | Better diagnostics if reflection-shaped issues surface.                                                                                                                                                                                                                 |
+| `--gc=epsilon`                              | No-op GC: the plugin runs once per protoc invocation and exits immediately, so GC machinery is dead weight in the binary.                                                                                                                                                |
 
 ### Consuming the plugin
 
@@ -393,7 +455,7 @@ The release process:
 2. release-please maintains an open `chore(main): release vX.Y.Z` PR on the
    repo showing the proposed version + CHANGELOG diff.
 3. Merging that PR is the manual release trigger — it tags `vX.Y.Z`, creates
-   the GitHub Release, and publishes to Maven Central.
+   the GitHub Release, and (with secrets configured) publishes to Maven Central.
 
 CHANGELOG is at [`CHANGELOG.md`](CHANGELOG.md).
 
@@ -412,5 +474,4 @@ protobuf {
 ```
 
 `protobuf-gradle-plugin` auto-resolves the matching classifier for the host
-OS / arch — see "Consuming the plugin" above. Published artifacts are at
-<https://central.sonatype.com/artifact/io.github.kotpb/kotpb-grpc-codegen>.
+OS / arch — see [Consuming the plugin](#consuming-the-plugin) above.
