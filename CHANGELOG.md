@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.2.3](https://github.com/Kotpb/kotpb-grpc-codegen/compare/v0.2.2...v0.2.3) (2026-11-08)
+
+
+### Documentation
+
+* Update README ([#31](https://github.com/Kotpb/kotpb-grpc-codegen/issues/31)) ([67b5e5c](https://github.com/Kotpb/kotpb-grpc-codegen/commit/67b5e5c1f859142c9b60dec941ebbb7a35e4b143))
+
+
+### Build & CI
+
+* **deps:** Bump actions/setup-java from 5.7.0 to 6.0.0 in the gh-actions group ([#30](https://github.com/Kotpb/kotpb-grpc-codegen/issues/30)) ([b7927fe](https://github.com/Kotpb/kotpb-grpc-codegen/commit/b7927fe22f4fc23fd209bbbab8578941b051fa5d))
+* **deps:** Bump the gh-actions group across 1 directory with 6 updates ([#42](https://github.com/Kotpb/kotpb-grpc-codegen/issues/42)) ([61b9e08](https://github.com/Kotpb/kotpb-grpc-codegen/commit/61b9e088c234a31ab9b394b12f697f1bc234e181))
+* **deps:** Bump the gradle-deps group across 1 directory with 8 updates ([#29](https://github.com/Kotpb/kotpb-grpc-codegen/issues/29)) ([024cc66](https://github.com/Kotpb/kotpb-grpc-codegen/commit/024cc6672b3630602a3db4a1558d83afe1aff52c))
+* **deps:** Bump the gradle-deps group across 1 directory with 8 updates ([#37](https://github.com/Kotpb/kotpb-grpc-codegen/issues/37)) ([d6fb625](https://github.com/Kotpb/kotpb-grpc-codegen/commit/d6fb625e4227a47f89c513775144ab0fc8707e40))
+* **deps:** Bump the gradle-deps group across 1 directory with 8 updates ([#43](https://github.com/Kotpb/kotpb-grpc-codegen/issues/43)) ([67ccda4](https://github.com/Kotpb/kotpb-grpc-codegen/commit/67ccda4d465b60e2bf2a81cfd0e5728144b295a7))
+* **deps:** Bump the gradle-deps group with 3 updates ([#44](https://github.com/Kotpb/kotpb-grpc-codegen/issues/44)) ([88b320b](https://github.com/Kotpb/kotpb-grpc-codegen/commit/88b320b7b12a8cbf77777e3da28bb61de1adbe03))
+
 ## [0.2.2](https://github.com/Kotpb/kotpb-grpc-codegen/compare/v0.2.1...v0.2.2) (2026-08-09)
 
 
