@@ -124,4 +124,11 @@ class GeneratedShapeTest {
         assertThat(content).contains("Status.UNIMPLEMENTED.withDescription")
         assertThat(content).contains("test.echo.EchoService.Unary")
     }
+
+    @Test
+    fun `server methods are open by default`() {
+        assertThat(content).contains("public open suspend fun unary(request: EchoRequest): EchoResponse = throw")
+        assertThat(content).doesNotContain("public abstract suspend fun")
+        assertThat(content).doesNotContain("public abstract fun")
+    }
 }

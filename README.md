@@ -51,7 +51,7 @@ graph TD
 | **Lite mode support** | Tied to full `grpc-protobuf` (`Message` bound) | **Dedicated `lite=true` mode** (`ProtoLiteUtils.marshaller` / `MessageLite`) |
 | **Descriptors & accessors** | Delegates to Java `*Grpc` descriptors | **Self-contained** lazy descriptors & `@JvmStatic` companion accessors on stub & impl |
 | **Comment preservation** | Fixed generic coroutine docstrings | Preserves `.proto` leading comments as rich KDoc (`comments=true`) |
-| **Plugin CLI options** | None (`--grpc-kotlin_opt` ignored) | **Full support** (`comments`, `lite`, `java_package=<pkg>`) |
+| **Plugin CLI options** | None (`--grpc-kotlin_opt` ignored) | **Full support** (`comments`, `lite`, `java_package=<pkg>`, `abstract_server_methods`) |
 | **File-splitting** | Always single file per `.proto` (`<OuterClass>GrpcKt.kt`) | **Honors `java_multiple_files`** (`<Service>GrpcKt.kt` per service, automatic in Edition 2024) |
 
 ## Benchmarks
@@ -207,6 +207,7 @@ e.g. `--grpc-kotlin_opt=comments,java_package=com.acme`).
 | `lite` (or `lite=true`)         | Emit `ProtoLiteUtils.marshaller(...)` instead of `ProtoUtils.marshaller(...)`. See note below.                                                                                                        |
 | `comments` (or `comments=true`) | Preserve `.proto` source leading comments as KDoc on the outer object, the stub class, the impl base, the `MethodDescriptor` properties, and every per-method client/server function. Off by default. |
 | `java_package=<pkg>`            | Override the Kotlin output package. Otherwise resolved from the file's `option java_package`, falling back to the proto `package`.                                                                    |
+| `abstract_server_methods`       | Generate the impl base's RPC functions as `abstract`, with no default body, so a server that doesn't override one, deprecated ones included, fails to compile. Off by default: they are `open`, and answer `UNIMPLEMENTED`. |
 
 ### When to use `lite`
 
@@ -277,8 +278,9 @@ object FooGrpcKt {
 
         companion object { @JvmStatic val serviceDescriptor: ServiceDescriptor }
 
-        open suspend fun unary(request: ReqT): RespT          // throws UNIMPLEMENTED by default
-        open fun serverStream(request: ReqT): Flow<RespT>     // throws UNIMPLEMENTED by default
+        // open, throwing UNIMPLEMENTED by default; abstract with `abstract_server_methods`
+        open suspend fun unary(request: ReqT): RespT
+        open fun serverStream(request: ReqT): Flow<RespT>
         open suspend fun clientStream(requests: Flow<ReqT>): RespT
         open fun bidiStream(requests: Flow<ReqT>): Flow<RespT>
 

@@ -187,4 +187,35 @@ class GeneratorOptionsTest {
         val content = runWithParameter("")
         assertThat(content).contains("DO NOT EDIT")
     }
+
+    @Test
+    fun `abstract_server_methods makes every server method abstract, without a default body`() {
+        val content = runWithParameter("abstract_server_methods")
+        assertThat(content).contains("public abstract suspend fun unary(request: EchoRequest): EchoResponse\n")
+        assertThat(content).contains("public abstract fun serverStream(request: EchoRequest): Flow<EchoResponse>\n")
+        assertThat(content).contains(
+            "public abstract suspend fun clientStream(requests: Flow<EchoRequest>): EchoResponse\n"
+        )
+        assertThat(content).contains(
+            "public abstract fun bidiStream(requests: Flow<EchoRequest>): Flow<EchoResponse>\n"
+        )
+        assertThat(content).doesNotContain("public open ")
+        assertThat(content).doesNotContain("= throw StatusException")
+        // TODO() in an override still answers UNIMPLEMENTED
+        assertThat(content).contains("catch (e: NotImplementedError)")
+    }
+
+    @Test
+    fun `abstract_server_methods=false keeps server methods open`() {
+        val content = runWithParameter("abstract_server_methods=false")
+        assertThat(content).contains("public open suspend fun unary(")
+        assertThat(content).doesNotContain("public abstract suspend fun")
+    }
+
+    @Test
+    fun `abstract_server_methods combines with other options`() {
+        val content = runWithParameter("lite,abstract_server_methods")
+        assertThat(content).contains("ProtoLiteUtils.marshaller(")
+        assertThat(content).contains("public abstract suspend fun unary(")
+    }
 }

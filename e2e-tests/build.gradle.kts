@@ -31,6 +31,18 @@ val grpcKotlinPluginPath: String =
         .asFile
         .absolutePath
 
+// A fixture generated with --grpc-kotlin_opt=abstract_server_methods. protoc's
+// plugin options apply to a whole generate task, so it has a source set, and
+// a task, of its own, which the tests compile and run against.
+val abstractServerMethods: SourceSet = sourceSets.create("abstractServerMethods")
+configurations.named(abstractServerMethods.implementationConfigurationName) {
+    extendsFrom(configurations.implementation.get())
+}
+sourceSets.test {
+    compileClasspath += abstractServerMethods.output
+    runtimeClasspath += abstractServerMethods.output
+}
+
 // libs.versions.protobuf.get() doesn't resolve inside the protobuf-gradle-plugin's
 // configuration block (Kotlin DSL accessor quirk, persists into Gradle 9.5);
 // the library accessor for the `protoc` artifact does, and toString() on a
@@ -50,6 +62,7 @@ protobuf {
             task.plugins {
                 id("grpckt") {
                     option("comments=true")
+                    if (task.sourceSet.name == abstractServerMethods.name) option("abstract_server_methods")
                 }
             }
             task.dependsOn(":plugin:installDist")

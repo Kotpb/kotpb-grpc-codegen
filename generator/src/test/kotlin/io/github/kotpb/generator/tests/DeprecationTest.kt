@@ -10,6 +10,10 @@ class DeprecationTest {
     private val deprecatedContent: String by lazy {
         GeneratorRunner.run(TestFixtures.requestWithDeprecation()).getFile(0).content
     }
+    private val deprecatedAbstractContent: String by lazy {
+        val request = TestFixtures.requestWithDeprecation().toBuilder().setParameter("abstract_server_methods").build()
+        GeneratorRunner.run(request).getFile(0).content
+    }
     private val plainContent: String by lazy {
         GeneratorRunner.run(TestFixtures.simpleRequestProto3()).getFile(0).content
     }
@@ -44,6 +48,14 @@ class DeprecationTest {
     fun `deprecated method marks the server impl-base function`() {
         assertThat(deprecatedContent).containsPattern(
             """@Deprecated\("This RPC is deprecated\."\)\s+public open suspend fun unary\("""
+        )
+    }
+
+    @Test
+    fun `with abstract_server_methods, a deprecated method is abstract like the others`() {
+        // a deprecated RPC is still part of the API, and still called, so a server still implements it
+        assertThat(deprecatedAbstractContent).containsPattern(
+            """@Deprecated\("This RPC is deprecated\."\)\s+public abstract suspend fun unary\("""
         )
     }
 
