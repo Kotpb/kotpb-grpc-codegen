@@ -1,6 +1,7 @@
 package io.github.kotpb.generator
 
 import com.squareup.kotlinpoet.ClassName
+import com.squareup.kotlinpoet.MemberName
 
 object TypeNames {
     val Channel = ClassName("io.grpc", "Channel")
@@ -25,6 +26,8 @@ object TypeNames {
     val ProtoMethodDescriptor = ClassName("com.google.protobuf.Descriptors", "MethodDescriptor")
 
     val Flow = ClassName("kotlinx.coroutines.flow", "Flow")
+    val FlowCatch = MemberName("kotlinx.coroutines.flow", "catch")
+    val NotImplementedError = ClassName("kotlin", "NotImplementedError")
     val CoroutineContext = ClassName("kotlin.coroutines", "CoroutineContext")
     val EmptyCoroutineContext = ClassName("kotlin.coroutines", "EmptyCoroutineContext")
 
