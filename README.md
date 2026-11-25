@@ -287,6 +287,12 @@ object FooGrpcKt {
 }
 ```
 
+A server method that throws Kotlin's `NotImplementedError`, as `TODO()` does, answers
+`UNIMPLEMENTED`, like a method left out, rather than the `UNKNOWN` that
+grpc-kotlin-stub answers any other exception with. `bindService` maps it,
+whether the method throws it when called or, for a streaming method, as its
+flow is collected.
+
 ## File-splitting
 
 Output mirrors `protoc-gen-java`'s behaviour:
