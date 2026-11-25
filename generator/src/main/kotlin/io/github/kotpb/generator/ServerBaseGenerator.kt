@@ -60,13 +60,55 @@ object ServerBaseGenerator {
             builder.addAnnotation(Annotations.deprecated(Annotations.DEPRECATED_METHOD_MESSAGE))
         }
 
-        builder.addStatement(
-            "throw %T(%T.UNIMPLEMENTED.withDescription(%S))",
-            TypeNames.StatusException,
+        builder.addStatement("throw %L", unimplemented(ctx, method, cause = null))
+        return builder.build()
+    }
+
+    /**
+     * `StatusException(UNIMPLEMENTED)` for [method], with [cause], the name of
+     * a `NotImplementedError` in scope, as its cause, if not null.
+     */
+    private fun unimplemented(ctx: ServiceContext, method: MethodDescriptorProto, cause: String?): CodeBlock {
+        val status = CodeBlock.of(
+            "%T.UNIMPLEMENTED.withDescription(%S)",
             TypeNames.Status,
             "Method ${ctx.fullyQualifiedServiceName}.${method.name} is unimplemented",
         )
-        return builder.build()
+        return if (cause == null) {
+            CodeBlock.of("%T(%L)", TypeNames.StatusException, status)
+        } else {
+            CodeBlock.of("%T(%L.withCause(%N))", TypeNames.StatusException, status, cause)
+        }
+    }
+
+    /**
+     * The implementation that `bindService` binds [method] to: a call of the
+     * service's method, which answers a `NotImplementedError`, as Kotlin's
+     * `TODO()` throws, with `UNIMPLEMENTED`, like the default body, rather
+     * than the `UNKNOWN` grpc-kotlin-stub answers any other exception with.
+     * A method that returns a `Flow` can throw it when called, or as the flow
+     * is collected, so both are caught.
+     */
+    private fun implementation(ctx: ServiceContext, method: MethodDescriptorProto): CodeBlock {
+        val kind = MethodKind.of(method)
+        val param = kind.requestParamName
+        val call = CodeBlock.builder()
+            .add("try {\n⇥%N(%N)\n⇤}", ctx.kotlinMethodName(method.name), param)
+            .add(" catch (e: %T) {\n⇥throw %L\n⇤}", TypeNames.NotImplementedError, unimplemented(ctx, method, "e"))
+            .build()
+        val body = if (kind.serverStreaming) {
+            CodeBlock.builder()
+                .add("(%L).%M { e ->\n⇥", call, TypeNames.FlowCatch)
+                .add(
+                    "throw if (e is %T) %L else e\n⇤}",
+                    TypeNames.NotImplementedError,
+                    unimplemented(ctx, method, "e"),
+                )
+                .build()
+        } else {
+            call
+        }
+        return CodeBlock.of("{ %N ->\n⇥%L\n⇤}", param, body)
     }
 
     private fun buildBindServiceMethod(ctx: ServiceContext): FunSpec {
@@ -74,12 +116,12 @@ object ServerBaseGenerator {
             .addStatement("return %T.builder(serviceDescriptor)", TypeNames.ServerServiceDefinition)
         for (method in ctx.service.methodList) {
             val kind = MethodKind.of(method)
-            body.addStatement(
-                ".addMethod(%T.%N(context, %N, ::%N))",
+            body.add(
+                ".addMethod(%T.%N(context, %N) %L)\n",
                 TypeNames.ServerCalls,
                 kind.serverMethodDefinitionFn,
                 ctx.getMethodPropertyName(method.name),
-                ctx.kotlinMethodName(method.name),
+                implementation(ctx, method),
             )
         }
         body.addStatement(".build()")

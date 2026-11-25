@@ -95,16 +95,28 @@ class GeneratedShapeTest {
     @Test
     fun `bindService uses ServerCalls and matching method definition factories`() {
         assertThat(content).contains("ServerServiceDefinition.builder(serviceDescriptor)")
-        assertThat(content).contains("ServerCalls.unaryServerMethodDefinition(context, getUnaryMethod, ::unary)")
+        assertThat(content).contains("ServerCalls.unaryServerMethodDefinition(context, getUnaryMethod) { request ->")
         assertThat(content).contains(
-            "ServerCalls.serverStreamingServerMethodDefinition(context, getServerStreamMethod, ::serverStream)"
+            "ServerCalls.serverStreamingServerMethodDefinition(context, getServerStreamMethod) { request ->"
         )
         assertThat(content).contains(
-            "ServerCalls.clientStreamingServerMethodDefinition(context, getClientStreamMethod, ::clientStream)"
+            "ServerCalls.clientStreamingServerMethodDefinition(context, getClientStreamMethod) { requests ->"
         )
         assertThat(content).contains(
-            "ServerCalls.bidiStreamingServerMethodDefinition(context, getBidiStreamMethod, ::bidiStream)"
+            "ServerCalls.bidiStreamingServerMethodDefinition(context, getBidiStreamMethod) { requests ->"
         )
+    }
+
+    @Test
+    fun `bindService answers NotImplementedError with UNIMPLEMENTED`() {
+        // TODO() throws NotImplementedError, which grpc-kotlin-stub would otherwise answer with UNKNOWN
+        assertThat(content).contains("catch (e: NotImplementedError)")
+        assertThat(content).contains(
+            "Status.UNIMPLEMENTED.withDescription(\"Method test.echo.EchoService.Unary is unimplemented\").withCause(e)"
+        )
+        // a streaming method can also throw it as its flow is collected
+        assertThat(content).containsPattern("""\}\)\.`catch` \{ e ->\s+throw if \(e is NotImplementedError\)""")
+        assertThat(Regex("""\.`catch` \{""").findAll(content).count()).isEqualTo(2)
     }
 
     @Test
