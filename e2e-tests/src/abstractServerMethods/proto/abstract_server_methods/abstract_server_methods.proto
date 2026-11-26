@@ -1,9 +1,3 @@
-// Matrix cell: --grpc-kotlin_opt=abstract_server_methods.
-//
-// Generated in a source set of its own, since protoc's plugin options apply
-// to a whole generate task. Every RPC of the impl base is abstract,
-// deprecated ones too, so a server that leaves one out fails to compile.
-
 syntax = "proto3";
 
 package abstract_server_methods;

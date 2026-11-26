@@ -1,8 +1,10 @@
 package io.github.kotpb.generator.tests
 
+import io.github.kotpb.generator.GeneratorConfig
 import io.github.kotpb.generator.GeneratorRunner
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 
 class GeneratorOptionsTest {
     private fun runWithParameter(parameter: String): String {
@@ -44,11 +46,6 @@ class GeneratorOptionsTest {
 
     @Test
     fun `lite output omits schema descriptors and supplier classes`() {
-        // The lite runtime (protobuf-javalite + grpc-protobuf-lite) doesn't
-        // ship Descriptors.FileDescriptor or the io.grpc.protobuf.Proto*
-        // DescriptorSupplier interfaces, so emitting them would not compile
-        // for lite consumers. Upstream protoc-gen-grpc-java does the same
-        // omission in lite mode.
         val content = runWithParameter("lite=true")
         assertThat(content).doesNotContain(".setSchemaDescriptor(")
         assertThat(content).doesNotContain("FileDescriptorSupplier")
@@ -86,8 +83,6 @@ class GeneratorOptionsTest {
 
     @Test
     fun `derives outer class name from filename when java_outer_classname is absent`() {
-        // Bundled mode (clear java_multiple_files) so the outer class name
-        // appears in the generated file's name.
         val req = TestFixtures.rewriteFile(TestFixtures.simpleRequestProto3()) {
             setOptions(
                 clearedFileOptions(
@@ -98,7 +93,6 @@ class GeneratorOptionsTest {
         }
 
         val response = GeneratorRunner.run(req)
-        // Filename is "test/echo/echo.proto" -> base "echo" -> derived "Echo".
         assertThat(response.getFile(0).name).isEqualTo("com/example/echo/EchoGrpcKt.kt")
     }
 
@@ -117,15 +111,11 @@ class GeneratorOptionsTest {
         }
 
         val response = GeneratorRunner.run(req)
-        // "my_great_proto" -> "MyGreatProto" via toCamelCase (split on '_').
         assertThat(response.getFile(0).name).isEqualTo("com/example/echo/MyGreatProtoGrpcKt.kt")
     }
 
     @Test
     fun `appends OuterClass suffix when derived name matches a message`() {
-        // The fixture has a message named EchoRequest. A filename that derives
-        // to "EchoRequest" collides with it -- protoc-gen-java appends
-        // "OuterClass" and we must do the same so supplier code resolves.
         val req = TestFixtures.rewriteFile(
             TestFixtures.simpleRequestProto3(),
             withFileName = "test/echo/echo_request.proto",
@@ -164,9 +154,6 @@ class GeneratorOptionsTest {
 
     @Test
     fun `bundled mode references derived outer class in supplier and message types`() {
-        // Cross-check: when the outer class is derived (no java_outer_classname),
-        // every reference to it -- supplier bodies, MessageType qualifiers --
-        // must use the same derived name.
         val req = TestFixtures.rewriteFile(TestFixtures.simpleRequestProto3()) {
             setOptions(
                 clearedFileOptions(
@@ -201,7 +188,11 @@ class GeneratorOptionsTest {
         )
         assertThat(content).doesNotContain("public open ")
         assertThat(content).doesNotContain("= throw StatusException")
-        // TODO() in an override still answers UNIMPLEMENTED
+    }
+
+    @Test
+    fun `abstract_server_methods preserves NotImplementedError handling in bindService`() {
+        val content = runWithParameter("abstract_server_methods")
         assertThat(content).contains("catch (e: NotImplementedError)")
     }
 
@@ -217,5 +208,36 @@ class GeneratorOptionsTest {
         val content = runWithParameter("lite,abstract_server_methods")
         assertThat(content).contains("ProtoLiteUtils.marshaller(")
         assertThat(content).contains("public abstract suspend fun unary(")
+    }
+
+    @Test
+    fun `unknown plugin option throws IllegalArgumentException`() {
+        val error = assertThrows<IllegalArgumentException> {
+            GeneratorConfig.parse("abstract_server_method")
+        }
+        assertThat(error).hasMessageContaining("abstract_server_method")
+    }
+
+    @Test
+    fun `invalid boolean option value throws IllegalArgumentException`() {
+        val error = assertThrows<IllegalArgumentException> {
+            GeneratorConfig.parse("abstract_server_methods=yes")
+        }
+        assertThat(error).hasMessageContaining("abstract_server_methods")
+        assertThat(error).hasMessageContaining("yes")
+
+        assertThrows<IllegalArgumentException> {
+            GeneratorConfig.parse("lite=")
+        }
+    }
+
+    @Test
+    fun `java_package without a non-empty value throws IllegalArgumentException`() {
+        assertThrows<IllegalArgumentException> {
+            GeneratorConfig.parse("java_package")
+        }
+        assertThrows<IllegalArgumentException> {
+            GeneratorConfig.parse("java_package=")
+        }
     }
 }

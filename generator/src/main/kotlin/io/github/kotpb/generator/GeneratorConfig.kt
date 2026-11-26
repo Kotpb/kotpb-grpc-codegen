@@ -19,10 +19,16 @@ data class GeneratorConfig(
                 val key = parts[0].trim()
                 val value = parts.getOrNull(1)?.trim()
                 when (key) {
-                    "lite" -> lite = parseBooleanFlag(value)
-                    "comments" -> comments = parseBooleanFlag(value)
-                    "abstract_server_methods" -> abstractServerMethods = parseBooleanFlag(value)
-                    "java_package" -> pkg = value
+                    "lite" -> lite = parseBooleanFlag(key, value)
+                    "comments" -> comments = parseBooleanFlag(key, value)
+                    "abstract_server_methods" -> abstractServerMethods = parseBooleanFlag(key, value)
+                    "java_package" -> {
+                        require(!value.isNullOrBlank()) {
+                            "Option 'java_package' requires a non-empty value"
+                        }
+                        pkg = value
+                    }
+                    else -> throw IllegalArgumentException("Unknown plugin option: '$key'")
                 }
             }
             return GeneratorConfig(
@@ -33,7 +39,12 @@ data class GeneratorConfig(
             )
         }
 
-        private fun parseBooleanFlag(value: String?): Boolean =
-            value == null || value.equals("true", ignoreCase = true)
+        private fun parseBooleanFlag(key: String, value: String?): Boolean = when {
+            value == null || value.equals("true", ignoreCase = true) -> true
+            value.equals("false", ignoreCase = true) -> false
+            else -> throw IllegalArgumentException(
+                "Invalid boolean value '$value' for option '$key' (expected 'true' or 'false')"
+            )
+        }
     }
 }

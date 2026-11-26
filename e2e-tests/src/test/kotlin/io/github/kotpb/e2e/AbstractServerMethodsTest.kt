@@ -3,6 +3,10 @@ package io.github.kotpb.e2e
 import com.example.abstract_server_methods.GreetRequest
 import com.example.abstract_server_methods.GreetResponse
 import com.example.abstract_server_methods.GreeterServiceGrpcKt
+import io.grpc.Status
+import io.grpc.StatusException
+import io.grpc.inprocess.InProcessChannelBuilder
+import io.grpc.inprocess.InProcessServerBuilder
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
@@ -11,13 +15,10 @@ import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.RegisterExtension
 import java.lang.reflect.Modifier
 
-/**
- * Matrix cell: `--grpc-kotlin_opt=abstract_server_methods`. The server below has to override every RPC, the deprecated
- * one too, or this file fails to compile; and it serves calls just as one on an open base does.
- */
 class AbstractServerMethodsTest {
     @JvmField
     @RegisterExtension
@@ -51,6 +52,37 @@ class AbstractServerMethodsTest {
     fun `a deprecated RPC is implemented and served like the others`() = runTest {
         assertThat(grpc.stub.oldGreet(request("f")).message).isEqualTo("old hello f")
     }
+
+    @Test
+    @Suppress("DEPRECATION")
+    fun `TODO overrides in an abstract server answer UNIMPLEMENTED`() = runTest {
+        val name = InProcessServerBuilder.generateName()
+        val server = InProcessServerBuilder.forName(name)
+            .directExecutor()
+            .addService(TodoGreeterServerImpl())
+            .build()
+            .start()
+        val channel = InProcessChannelBuilder.forName(name).directExecutor().build()
+        try {
+            val stub = GreeterServiceGrpcKt.GreeterServiceCoroutineStub(channel)
+            assertUnimplemented("Greet") { stub.greet(request("a")) }
+            assertUnimplemented("GreetMany") { stub.greetMany(request("b")).toList() }
+            assertUnimplemented("GreetAll") { stub.greetAll(flowOf(request("c"))) }
+            assertUnimplemented("GreetEach") { stub.greetEach(flowOf(request("d"))).toList() }
+            assertUnimplemented("OldGreet") { stub.oldGreet(request("e")) }
+        } finally {
+            channel.shutdownNow()
+            server.shutdownNow()
+        }
+    }
+
+    private suspend fun assertUnimplemented(methodName: String, call: suspend () -> Any?) {
+        val status = assertThrows<StatusException> { call() }.status
+        assertThat(status.code).isEqualTo(Status.Code.UNIMPLEMENTED)
+        assertThat(status.description).isEqualTo(
+            "Method abstract_server_methods.GreeterService.$methodName is unimplemented"
+        )
+    }
 }
 
 private fun response(message: String) = GreetResponse.newBuilder().setMessage(message).build()
@@ -71,4 +103,17 @@ private class GreeterServerImpl : GreeterServiceGrpcKt.GreeterServiceCoroutineIm
 
     @Deprecated("This RPC is deprecated.")
     override suspend fun oldGreet(request: GreetRequest): GreetResponse = response("old hello ${request.name}")
+}
+
+private class TodoGreeterServerImpl : GreeterServiceGrpcKt.GreeterServiceCoroutineImplBase() {
+    override suspend fun greet(request: GreetRequest): GreetResponse = TODO()
+
+    override fun greetMany(request: GreetRequest): Flow<GreetResponse> = TODO()
+
+    override suspend fun greetAll(requests: Flow<GreetRequest>): GreetResponse = TODO("not yet")
+
+    override fun greetEach(requests: Flow<GreetRequest>): Flow<GreetResponse> = flow { TODO("not yet") }
+
+    @Deprecated("This RPC is deprecated.")
+    override suspend fun oldGreet(request: GreetRequest): GreetResponse = TODO()
 }

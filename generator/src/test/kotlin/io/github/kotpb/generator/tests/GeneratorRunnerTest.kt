@@ -53,4 +53,30 @@ class GeneratorRunnerTest {
 
         assertThat(response.fileList).isEmpty()
     }
+
+    @Test
+    fun `unknown plugin option returns a CodeGeneratorResponse error without files`() {
+        val request = TestFixtures.simpleRequestProto3().toBuilder()
+            .setParameter("abstract_server_method")
+            .build()
+
+        val response = GeneratorRunner.run(request)
+
+        assertThat(response.hasError()).isTrue()
+        assertThat(response.error).contains("abstract_server_method")
+        assertThat(response.fileList).isEmpty()
+    }
+
+    @Test
+    fun `invalid boolean option value returns a CodeGeneratorResponse error`() {
+        val request = TestFixtures.simpleRequestProto3().toBuilder()
+            .setParameter("abstract_server_methods=1")
+            .build()
+
+        val response = GeneratorRunner.run(request)
+
+        assertThat(response.hasError()).isTrue()
+        assertThat(response.error).contains("abstract_server_methods")
+        assertThat(response.fileList).isEmpty()
+    }
 }

@@ -2,8 +2,8 @@ package io.github.kotpb.generator.tests
 
 import io.github.kotpb.generator.GeneratorRunner
 import org.assertj.core.api.Assertions.assertThat
-import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.TestInstance
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class GeneratedShapeTest {
@@ -77,8 +77,6 @@ class GeneratedShapeTest {
     @Test
     fun `ServiceDescriptor is built from our own suppliers and addMethod calls`() {
         assertThat(content).contains("ServiceDescriptor.newBuilder(SERVICE_NAME)")
-        // EchoServiceFileDescriptorSupplier is now an `object`, so the schema
-        // descriptor reference is the singleton itself -- no parens, no allocation.
         assertThat(content).contains("setSchemaDescriptor(EchoServiceFileDescriptorSupplier)")
         assertThat(content).contains("addMethod(getUnaryMethod)")
         assertThat(content).contains("addMethod(getServerStreamMethod)")
@@ -109,25 +107,21 @@ class GeneratedShapeTest {
 
     @Test
     fun `bindService answers NotImplementedError with UNIMPLEMENTED`() {
-        // TODO() throws NotImplementedError, which grpc-kotlin-stub would otherwise answer with UNKNOWN
         assertThat(content).contains("catch (e: NotImplementedError)")
         assertThat(content).contains(
             "Status.UNIMPLEMENTED.withDescription(\"Method test.echo.EchoService.Unary is unimplemented\").withCause(e)"
         )
-        // a streaming method can also throw it as its flow is collected
         assertThat(content).containsPattern("""\}\)\.`catch` \{ e ->\s+throw if \(e is NotImplementedError\)""")
         assertThat(Regex("""\.`catch` \{""").findAll(content).count()).isEqualTo(2)
     }
 
     @Test
-    fun `server unary method throws UNIMPLEMENTED by default`() {
-        assertThat(content).contains("Status.UNIMPLEMENTED.withDescription")
-        assertThat(content).contains("test.echo.EchoService.Unary")
-    }
-
-    @Test
-    fun `server methods are open by default`() {
-        assertThat(content).contains("public open suspend fun unary(request: EchoRequest): EchoResponse = throw")
+    fun `server methods are open and throw UNIMPLEMENTED by default`() {
+        assertThat(content).contains(
+            "public open suspend fun unary(request: EchoRequest): EchoResponse = " +
+                "throw StatusException(Status.UNIMPLEMENTED.withDescription(" +
+                "\"Method test.echo.EchoService.Unary is unimplemented\"))"
+        )
         assertThat(content).doesNotContain("public abstract suspend fun")
         assertThat(content).doesNotContain("public abstract fun")
     }

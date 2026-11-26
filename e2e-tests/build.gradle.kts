@@ -43,11 +43,6 @@ sourceSets.test {
     runtimeClasspath += abstractServerMethods.output
 }
 
-// libs.versions.protobuf.get() doesn't resolve inside the protobuf-gradle-plugin's
-// configuration block (Kotlin DSL accessor quirk, persists into Gradle 9.5);
-// the library accessor for the `protoc` artifact does, and toString() on a
-// MinimalExternalModuleDependency returns "group:name:version" — exactly what
-// `artifact` wants.
 protobuf {
     protoc {
         artifact = libs.protobuf.protoc.get().toString()

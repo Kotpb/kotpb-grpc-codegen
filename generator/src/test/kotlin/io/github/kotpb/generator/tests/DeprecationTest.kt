@@ -38,6 +38,13 @@ class DeprecationTest {
     }
 
     @Test
+    fun `with abstract_server_methods, a deprecated service still marks CoroutineImplBase`() {
+        assertThat(deprecatedAbstractContent).containsPattern(
+            """@Deprecated\("This service is deprecated\."\)\s+public abstract class EchoServiceCoroutineImplBase"""
+        )
+    }
+
+    @Test
     fun `deprecated method marks the client stub function`() {
         assertThat(deprecatedContent).containsPattern(
             """@Deprecated\("This RPC is deprecated\."\)\s+public suspend fun unary\("""
@@ -53,7 +60,6 @@ class DeprecationTest {
 
     @Test
     fun `with abstract_server_methods, a deprecated method is abstract like the others`() {
-        // a deprecated RPC is still part of the API, and still called, so a server still implements it
         assertThat(deprecatedAbstractContent).containsPattern(
             """@Deprecated\("This RPC is deprecated\."\)\s+public abstract suspend fun unary\("""
         )
@@ -68,11 +74,12 @@ class DeprecationTest {
 
     @Test
     fun `non-deprecated methods alongside a deprecated one stay unmarked`() {
-        // Only Unary is marked deprecated in the fixture. Each per-method
-        // annotation lands on the descriptor property + stub fn + impl fn = 3.
-        val deprecatedMethodMarkers = Regex("""@Deprecated\("This RPC is deprecated\."\)""")
-            .findAll(deprecatedContent).count()
-        assertThat(deprecatedMethodMarkers).isEqualTo(3)
+        val pattern = Regex(
+            """@Deprecated\("This RPC is deprecated\."\)\s+public\s+""" +
+                """(?:(?:open|abstract)\s+)?(?:suspend\s+)?(?:val|fun)\s+(\w+)"""
+        )
+        val annotatedDeclarations = pattern.findAll(deprecatedContent).map { it.groupValues[1] }.toList()
+        assertThat(annotatedDeclarations).containsExactlyInAnyOrder("getUnaryMethod", "unary", "unary")
     }
 
     @Test
