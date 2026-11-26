@@ -20,7 +20,11 @@ object GeneratorRunner {
         response.minimumEdition = Edition.EDITION_PROTO2.number
         response.maximumEdition = Edition.EDITION_2024.number
 
-        val config = GeneratorConfig.parse(request.parameter)
+        val config = try {
+            GeneratorConfig.parse(request.parameter)
+        } catch (e: IllegalArgumentException) {
+            return response.setError(e.message ?: "Invalid plugin option").build()
+        }
         val filesToGenerate = request.fileToGenerateList.toSet()
         val protoFileByName = request.protoFileList.associateBy { it.name }
         val typeIndex = ProtoTypeIndex.build(request.protoFileList)

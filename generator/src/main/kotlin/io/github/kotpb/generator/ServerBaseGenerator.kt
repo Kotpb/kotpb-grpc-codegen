@@ -33,14 +33,14 @@ object ServerBaseGenerator {
         classBuilder.addType(serviceDescriptorCompanion(ctx))
 
         ctx.service.methodList.forEachIndexed { methodIndex, method ->
-            classBuilder.addFunction(buildOpenServerMethod(ctx, method, methodIndex))
+            classBuilder.addFunction(buildServerMethod(ctx, method, methodIndex))
         }
         classBuilder.addFunction(buildBindServiceMethod(ctx))
 
         builder.addType(classBuilder.build())
     }
 
-    private fun buildOpenServerMethod(
+    private fun buildServerMethod(
         ctx: ServiceContext,
         method: MethodDescriptorProto,
         methodIndex: Int,
@@ -50,7 +50,7 @@ object ServerBaseGenerator {
         val responseType = ctx.classNameOf(method.outputType)
 
         val builder = FunSpec.builder(ctx.kotlinMethodName(method.name))
-            .addModifiers(KModifier.OPEN)
+            .addModifiers(if (ctx.config.abstractServerMethods) KModifier.ABSTRACT else KModifier.OPEN)
             .addParameter(kind.requestParamName, kind.requestType(requestType))
             .returns(kind.responseType(responseType))
         if (!kind.serverStreaming) builder.addModifiers(KModifier.SUSPEND)
@@ -60,24 +60,22 @@ object ServerBaseGenerator {
             builder.addAnnotation(Annotations.deprecated(Annotations.DEPRECATED_METHOD_MESSAGE))
         }
 
-        builder.addStatement("throw %L", unimplemented(ctx, method, cause = null))
+        if (!ctx.config.abstractServerMethods) {
+            builder.addStatement("throw %L", unimplemented(ctx, method, causeVarName = null))
+        }
         return builder.build()
     }
 
-    /**
-     * `StatusException(UNIMPLEMENTED)` for [method], with [cause], the name of
-     * a `NotImplementedError` in scope, as its cause, if not null.
-     */
-    private fun unimplemented(ctx: ServiceContext, method: MethodDescriptorProto, cause: String?): CodeBlock {
+    private fun unimplemented(ctx: ServiceContext, method: MethodDescriptorProto, causeVarName: String?): CodeBlock {
         val status = CodeBlock.of(
             "%T.UNIMPLEMENTED.withDescription(%S)",
             TypeNames.Status,
             "Method ${ctx.fullyQualifiedServiceName}.${method.name} is unimplemented",
         )
-        return if (cause == null) {
+        return if (causeVarName == null) {
             CodeBlock.of("%T(%L)", TypeNames.StatusException, status)
         } else {
-            CodeBlock.of("%T(%L.withCause(%N))", TypeNames.StatusException, status, cause)
+            CodeBlock.of("%T(%L.withCause(%N))", TypeNames.StatusException, status, causeVarName)
         }
     }
 
@@ -131,9 +129,6 @@ object ServerBaseGenerator {
             .returns(TypeNames.ServerServiceDefinition)
             .addCode(body.build())
 
-        // bindService has to reference every method (deprecated or not) and
-        // every method descriptor (which is also marked deprecated when its
-        // method is). Suppress so this internal plumbing compiles cleanly.
         if (ctx.service.options.deprecated || ctx.service.methodList.any { it.options.deprecated }) {
             builder.addAnnotation(
                 AnnotationSpec.builder(Suppress::class)

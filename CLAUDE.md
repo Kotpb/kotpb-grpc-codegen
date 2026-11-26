@@ -68,6 +68,8 @@ drop-in compatible.
   `grpc-protobuf-lite`); at runtime the two delegate to the same marshaller.
 - `comments=true` — preserve `.proto` leading comments as KDoc.
 - `java_package=<pkg>` — override Kotlin output package.
+- `abstract_server_methods=true` — impl-base RPC functions are `abstract`
+  (deprecated ones too), not `open` with an `UNIMPLEMENTED` body.
 
 ## Proto file options honored
 

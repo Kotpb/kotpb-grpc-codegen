@@ -10,6 +10,10 @@ class DeprecationTest {
     private val deprecatedContent: String by lazy {
         GeneratorRunner.run(TestFixtures.requestWithDeprecation()).getFile(0).content
     }
+    private val deprecatedAbstractContent: String by lazy {
+        val request = TestFixtures.requestWithDeprecation().toBuilder().setParameter("abstract_server_methods").build()
+        GeneratorRunner.run(request).getFile(0).content
+    }
     private val plainContent: String by lazy {
         GeneratorRunner.run(TestFixtures.simpleRequestProto3()).getFile(0).content
     }
@@ -34,6 +38,13 @@ class DeprecationTest {
     }
 
     @Test
+    fun `with abstract_server_methods, a deprecated service still marks CoroutineImplBase`() {
+        assertThat(deprecatedAbstractContent).containsPattern(
+            """@Deprecated\("This service is deprecated\."\)\s+public abstract class EchoServiceCoroutineImplBase"""
+        )
+    }
+
+    @Test
     fun `deprecated method marks the client stub function`() {
         assertThat(deprecatedContent).containsPattern(
             """@Deprecated\("This RPC is deprecated\."\)\s+public suspend fun unary\("""
@@ -48,6 +59,13 @@ class DeprecationTest {
     }
 
     @Test
+    fun `with abstract_server_methods, a deprecated method is abstract like the others`() {
+        assertThat(deprecatedAbstractContent).containsPattern(
+            """@Deprecated\("This RPC is deprecated\."\)\s+public abstract suspend fun unary\("""
+        )
+    }
+
+    @Test
     fun `deprecated method marks the MethodDescriptor property`() {
         assertThat(deprecatedContent).containsPattern(
             """@Deprecated\("This RPC is deprecated\."\)\s+public val getUnaryMethod"""
@@ -56,11 +74,12 @@ class DeprecationTest {
 
     @Test
     fun `non-deprecated methods alongside a deprecated one stay unmarked`() {
-        // Only Unary is marked deprecated in the fixture. Each per-method
-        // annotation lands on the descriptor property + stub fn + impl fn = 3.
-        val deprecatedMethodMarkers = Regex("""@Deprecated\("This RPC is deprecated\."\)""")
-            .findAll(deprecatedContent).count()
-        assertThat(deprecatedMethodMarkers).isEqualTo(3)
+        val pattern = Regex(
+            """@Deprecated\("This RPC is deprecated\."\)\s+public\s+""" +
+                """(?:(?:open|abstract)\s+)?(?:suspend\s+)?(?:val|fun)\s+(\w+)"""
+        )
+        val annotatedDeclarations = pattern.findAll(deprecatedContent).map { it.groupValues[1] }.toList()
+        assertThat(annotatedDeclarations).containsExactlyInAnyOrder("getUnaryMethod", "unary", "unary")
     }
 
     @Test

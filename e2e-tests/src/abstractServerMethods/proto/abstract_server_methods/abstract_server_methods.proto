@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package abstract_server_methods;
+
+option java_package = "com.example.abstract_server_methods";
+option java_outer_classname = "AbstractServerMethodsProto";
+option java_multiple_files = true;
+
+message GreetRequest {
+  string name = 1;
+}
+
+message GreetResponse {
+  string message = 1;
+}
+
+service GreeterService {
+  rpc Greet(GreetRequest) returns (GreetResponse);
+  rpc GreetMany(GreetRequest) returns (stream GreetResponse);
+  rpc GreetAll(stream GreetRequest) returns (GreetResponse);
+  rpc GreetEach(stream GreetRequest) returns (stream GreetResponse);
+  rpc OldGreet(GreetRequest) returns (GreetResponse) {
+    option deprecated = true;
+  }
+}

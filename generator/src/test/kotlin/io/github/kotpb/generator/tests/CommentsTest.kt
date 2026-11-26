@@ -71,6 +71,18 @@ class CommentsTest {
     }
 
     @Test
+    fun `comments=true preserves method KDoc on abstract server methods`() {
+        val content = run(
+            TestFixtures.requestWithComments(),
+            parameter = "comments=true,abstract_server_methods=true",
+        )
+        assertThat(content).containsPattern(
+            """/\*\*[\s*]*Sends an echo request and waits for the reply\.[\s\S]*?\*/""" +
+                """\s+public abstract suspend fun unary\("""
+        )
+    }
+
+    @Test
     fun `comments=true is a no-op when the file has no SourceCodeInfo`() {
         val content = run(TestFixtures.simpleRequestProto3(), parameter = "comments=true")
         // No leading_comments anywhere -> no KDoc blocks emitted. The file-level
