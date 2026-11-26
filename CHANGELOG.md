@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.3.0](https://github.com/Kotpb/kotpb-grpc-codegen/compare/v0.2.3...v0.3.0) (2026-11-26)
+
+
+### Features
+
+* Add abstract_server_methods option ([#49](https://github.com/Kotpb/kotpb-grpc-codegen/issues/49)) ([2bc552d](https://github.com/Kotpb/kotpb-grpc-codegen/commit/2bc552d933d5c56ba3b2294012ed91f56faf064a))
+* Answer TODO() in a server method with UNIMPLEMENTED ([#50](https://github.com/Kotpb/kotpb-grpc-codegen/issues/50)) ([c9d6449](https://github.com/Kotpb/kotpb-grpc-codegen/commit/c9d6449eafd1e768c3c997eeac69fe784ecfdb69))
+
+
+### Build & CI
+
+* **deps:** Bump the gh-actions group with 5 updates ([#46](https://github.com/Kotpb/kotpb-grpc-codegen/issues/46)) ([6087682](https://github.com/Kotpb/kotpb-grpc-codegen/commit/60876823071ff6e135618ef0ba4c29d6ee41d2ec))
+* **deps:** Bump the gradle-deps group across 1 directory with 3 updates ([#47](https://github.com/Kotpb/kotpb-grpc-codegen/issues/47)) ([4aeee5f](https://github.com/Kotpb/kotpb-grpc-codegen/commit/4aeee5fa2472e55924f97a69f49d118c817c1537))
+
 ## [0.2.3](https://github.com/Kotpb/kotpb-grpc-codegen/compare/v0.2.2...v0.2.3) (2026-11-08)
 
 
